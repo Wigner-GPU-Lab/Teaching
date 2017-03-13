@@ -1,8 +1,8 @@
 #include <vector>    //for std::vector
-#include <string>    //for std::string
+#include <string>    //for std::string, std::getline, std::stod
 #include <sstream>   //for std::stringstream
 #include <fstream>   //for std::ifstream, std::ofstream
-#include <iterator>  //for std::istream_iterator, std::ostream_iterator
+#include <iterator>  //for std::istream_iterator, std::ostream_iterator, std::back_inserter
 #include <algorithm> //for std::copy, std::for_each
 #include <iostream>  //for std::cout
 

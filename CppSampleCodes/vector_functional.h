@@ -136,10 +136,3 @@ auto cross( Vector<T, 3>const& v, Vector<T, 3>const& u )
                         v[2]*u[0]-v[0]*u[2],
                         v[0]*u[1]-v[1]*u[0]}}};
 }
-
-float f(float x, float y, float a, float b)
-{
-  auto v = vec(x, y);
-  auto u = vec(a, b);
-  return dot(v*5.0f, u);
-}

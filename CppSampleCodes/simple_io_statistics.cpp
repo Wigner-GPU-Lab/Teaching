@@ -1,7 +1,7 @@
 #include <vector>    //for std::vector
 #include <random>    //for std::random_device, std::mt19937, std::normal_distribution
 #include <fstream>   //for std::ifstream, std::ofstream
-#include <iterator>  //for std::istream_iterator, std::ostream_iterator
+#include <iterator>  //for std::istream_iterator, std::ostream_iterator, std::back_inserter
 #include <algorithm> //for std::generate, std::copy
 #include <numeric>   //for std::accumulate
 #include <iomanip>   //for std::setprecision
