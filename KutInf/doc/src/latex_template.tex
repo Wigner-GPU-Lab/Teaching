@@ -1,0 +1,352 @@
+\documentclass[a4paper, 12pt]{article}
+\usepackage{graphicx}
+
+\usepackage[utf8]{inputenc}
+\usepackage[magyar]{babel}
+
+% a szép matematikai szimbólumokért
+\usepackage{amssymb}
+\usepackage{amsmath}
+
+% ha táblázatban szeretnénk egyesített sorokat is
+\usepackage{multirow}
+
+% horizontal line
+\usepackage{hhline}
+
+% eps formátumú ábrák --> pdflatex fordításhoz!!
+\usepackage{epsfig}
+
+% egyenletekhez, pl mátrixok írására
+\usepackage{array}
+
+% ha betűszíneket is szeretnénk használni
+\usepackage{color}
+
+% Margók egyéni beállításai
+\usepackage{anysize}
+\marginsize{1.64cm}{1.64cm}{1.2cm}{2.4cm} %\left right top bottom
+
+% vakszöveg
+\usepackage{lipsum}
+\usepackage{blindtext}
+
+% A HIVATKOZÁSOKHOZ HASZNÁLT CSOMAGOK. RÉSZLETESEBBEN LD: google -> latex bibtex
+\usepackage[numbers, square, comma, sort&compress]{natbib}
+%\usepackage[format=hang,labelsep=period]{caption}
+
+\usepackage[unicode]{hyperref}   % ezzel a hivatkozások linkké válnak
+\usepackage{bookmark}
+\hypersetup{bookmarksopen={true}}
+\hypersetup{bookmarksopenlevel={2}}
+\hypersetup{bookmarksnumbered={true}}
+\hypersetup{
+  colorlinks,%
+  citecolor=red,%
+  filecolor=black,%                                                                                                                                               
+  linkcolor=blue,%
+  urlcolor=green
+}
+\numberwithin{equation}{section}          % ezekkel tudod beállítani, hogy milyen felbontásig menjen a hivatkozás
+\numberwithin{figure}{subsection}
+%\numberwithin{table}{section}          % ha kikommenteled, akkor csak simán számozva lesz.
+
+%%%%%%%%%%%%%%%% Néhány dolog a fancy kinézethez
+
+\frenchspacing
+\setlength{\parskip}{2ex}
+\setlength{\headsep}{0,4cm}
+\setlength{\headheight}{4pt}
+
+% fej- es lábléc
+\usepackage{fancyhdr}
+\usepackage{fancyref}
+\usepackage{fancyvrb}
+\pagestyle{fancy}
+
+\renewcommand{\headrulewidth}{0,05pt}
+\renewcommand{\footrulewidth}{0pt}
+
+
+\fancyhf{}
+\fancyhead[RE]{{ \nouppercase{\leftmark}} }
+\fancyhead[LO]{{ \nouppercase{\leftmark}} }
+\cfoot{--~\thepage~--}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+% Címoldalt lehet egyszerűen a \maketitle paranccsal is. Ha kissé részletesebb
+% címre van szükség, azt lehet így is, kézzel megadva mindent.
+\begin{titlepage}   
+\begin{center}
+\thispagestyle{empty}  
+
+\vspace*{0.7cm}
+\rule{\linewidth}{0.5mm} \\[3mm]
+\vspace*{0.7cm}
+
+{\LARGE Számítógépes alapismeretek}
+
+\vspace*{0.7cm}
+\rule{\linewidth}{0.5mm} \\[3mm]
+\rule{\linewidth}{0.5mm} \\[3mm]
+
+
+
+{\Large Gyakorlat\\}
+
+\vspace*{0.7cm}
+\rule{\linewidth}{0.5mm} \\[3mm]
+  {\small \LaTeX\ példafájl} \\[3mm]
+  \vspace*{1cm}
+{\footnotesize Írta: Bíró Gábor} \\
+{\tiny biro.gabor@wigner.mta.hu}
+
+  \vspace*{2cm}
+
+\begin{figure}[h!]
+\begin{center}
+\includegraphics[width=0.5\textwidth]{./elte.eps}
+\end{center}
+\end{figure}
+
+\end{center}
+\end{titlepage}
+
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\thispagestyle{empty}  
+
+\begin{abstract}
+  Kivonat-bevonat. Ez a példa tartalmaz minden olyat, amire a jövőben szükség lehet - de 
+  közel sem mindent, amire a \LaTeX képes. A következő bekezdés pedig egy vakszöveg, (,,töltelékszöveg'', 
+  \textit{placeholder}), amivel a dokumentum megjelenését lehet demonstrálni.
+
+  Előbb azonban vegyük észre, hogy az első bekezdésben a \textit{töltelékszöveg} szó kilóg 
+  az oldal szélén. Előfordul, hogy a \LaTeX\ nem tudja tökéletesen elválasztani a szavakat.
+  Hasonlóan, a \LaTeX\ parancs után kell egy szóköz, amit kényszerítve kell berakni.
+  Ezek nem szép hibák, erre figyelni kell. Helyesen így néz ki ugyanaz a bekezdés: 
+
+  Kivonat-bevonat. Ez a példa tartalmaz minden olyat, amire a jövőben szükség lehet - de 
+  közel sem mindent, amire a \LaTeX\ képes. A következő bekezdés pedig egy vakszöveg, (,,töl\-te\-lék\-szö\-veg'', 
+  \textit{placeholder}), amivel a dokumentum megjelenését lehet demonstrálni.
+
+  \lipsum[1]
+
+\end{abstract}
+
+% ---------------------------- T A R T A L O M J E G Y Z É K ----------------------------
+\newpage \vspace*{2cm}
+\thispagestyle{plain}                                                                                                                                             
+\pagenumbering{roman} \setcounter{page}{1}
+\tableofcontents
+
+\newpage \vspace*{2cm}
+\thispagestyle{plain}
+\listoffigures
+
+\newpage \vspace*{2cm}
+\thispagestyle{plain}
+\listoftables
+
+\newpage \vspace*{2cm}
+
+\pagenumbering{arabic} \setcounter{page}{1}
+\pagestyle{fancy}
+
+% ---------------------------- M A G A   A   D O L G O Z A T ----------------------------
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Bevezetés}
+\label{sec:bev}
+Itt egy hangzatos bevezetés szerepel.
+
+Ez egy következő bekezdés. Lehet használni \textbf{félkövér}, \textit{dőlt} és 
+\underline{aláhúzott} betűket is. Az "idézőjelet" a magyar nyelvben pedig helyesen ,,így'' 
+kell használni.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Egy fejezet}
+\label{sec:fejezet}
+
+Ez egy fejezet kezdete.
+
+\subsection{Egy alfejezet}
+\label{subsec:alfejezet}
+
+Ez meg egy alfejezet.
+
+\subsubsection{Alalfejezet}
+\label{subsubsec:alalfejezet}
+
+Ez pedig egy alalfejezet. Nevezetesen a \ref{sec:bev}. bevezetés után kezdődő \ref{sec:fejezet}. fejezet \ref{subsec:alfejezet}. alfejezetének \ref{subsubsec:alalfejezet}. alalfejezete, amiben meghivatkozom a \ref{fig:abra}. ábrát és a \ref{tab:tab}. táblázatot (helyesebben: \aref{tab:tab}. táblázatot). Meg a \cite{artic:elso} és \cite{artic:masodik, artic:harmadik, artic:negyedik} hivatkozásokat is. Ahhoz, hogy minden hivatkozás a helyére kerüljön, a \ref{eq:eq1}. egyenlet után következő lépéseket kell követned. Ha hiba van egy hivatkozásban, akkor az így fog megjelenni: \cite{ezegynemletezohivatkozas}, illetve \ref{esezmegmilehet}. A \texttt{\textbackslash cite}\footnote{Ez példa a lábjegyzetre, melyben leírom, hogy hogyan lehet a \textbackslash\ karaktert megjeleníteni. Mivel a \textbackslash\ karakterrel a \LaTeX-ben parancsot kell adni, parancsba kell adni, hogy most ezt a speciális karaktert is meg szeretnénk jeleníteni, így: \texttt{\textbackslash textbackslash}. Ez a forráskódban pedig így nézett ki: \texttt{\textbackslash texttt\{\textbackslash textbackslash textbackslash\}}. A forráskódba belenézve azt hiszem lehet érezni, hogy ezt kiírni már elég hosszú lenne.} paranccsal lehet irodalomjegyzékben definiált referenciára hivatkozni. Erre is több mód van; ehhez a dokumentumhoz a \textbf{bibtex} csomagot használtam. Ez nem a mostani anyag része, de későbbi használatra innen meg lehet tanulni.
+
+Ez egy új bekezdés. Az előző fejezet a forráskódban egyetlen sor volt, ami \textsc{vim}-ben 
+szerkesztve kényelmetlen lehet. Éppen ezért érdemes figyelni a forráskód tördelésére is.
+
+\begin{equation}
+a+b=c
+  \label{eq:eq1}
+\end{equation}
+
+Ez volt az egyenlet. 
+
+\subsubsection{A \LaTeX\ dokumentum lefordítása}
+A fordításhoz végrehajtandó lépések:
+
+\begin{itemize}
+  \item[a)] van \textit{eps}-től eltérő képformátum (\textit{png, jpg} vagy más) a dokumentumban:
+  \begin{enumerate}
+    \item pdflatex fajlnev.tex
+    \item bibtex fajlnev.aux
+    \item pdflatex fajlnev.tex
+    \item pdflatex fajlnev.tex
+  \end{enumerate}
+  \item[b)] nincs \textit{eps}-től eltérő képformátum a dokumentumban:
+  \begin{enumerate}
+    \item latex fajlnev.tex
+    \item bibtex fajlnev.tex
+    \item latex fajlnev.tex
+    \item latex fajlnev.tex
+    \item dvipdf fajlnev.tex
+  \end{enumerate}
+  \item harmadik opció nincs. Ezzel csak demonstrálom, hogy mi az \texttt{itemize} alapértelmezett szimbóluma.
+\end{itemize}
+
+Adott esetben azért lehet szükség az a) pontra, mert a \texttt{latex} parancs csak az \emph{eps} 
+kiterjesztésű képeket eszi meg. \textbf{\textcolor{red}{Amikor csak lehet, igyekezzünk ragazkodni 
+ehhez a formátumhoz!!}} 
+
+Amennyiben más formátumú képet is muszáj használnunk (pl. jelen dokumentumban), úgy fordításnál a 
+\texttt{pdflatex} parancsot kell használni\footnote{Megjegyzés: modern operációs rendszerekben valójában már a 
+\texttt{latex} is \texttt{pdflatex}, csak \texttt{dvi} módban futtatva.}. Ekkor viszont szükség lehet az 
+\emph{epsfig} package-re is az \textit{eps} képekhez.
+
+Végül, a lusták figyelmébe ajánlom a \texttt{lazy.sh} fájlt, amely pontosan ezeket a sorokat tartalmazza 
+(kiegészítve a fordítás során keletkező ideiglenes fájlok eltakarításával). Ennek ha futtatási jogot adunk a 
+
+\texttt{chmod +x lazy.sh}
+
+paranccsal\footnote{Ismételjük át a linux parancsokat is!}, majd a \texttt{./lazy.sh} paranccsal futtatjuk, 
+magától lefuttatja a fordítás fáradtságos műveletsorát.
+
+\paragraph{Megjegyzés}
+Gyakorlaton többeknél előfordult, hogy a \texttt{latex latex.tex} kétszeri, hiba nélküli lefuttatása után a 
+\texttt{dvipdf latex.dvi} egy hasonló hibaüzenettel tért vissza: 
+
+\noindent % ezzel megakadájozzuk, hogy a következő bekezdés valóban beljebb kezdődjön
+user@machine:$\sim$\$/latex/dvipdf latex.tex \\ % <-- új sor. 
+% Vegyük észre, hogy a $ jelet \$ paranccsal hoztam elő, míg a ~ jelet a \sim parancs adja, amit $ jelek közé,
+% tehát matematikai módba kell rakni!
+page 1 may be too complex to print
+
+Némi google után a legjobb tippem, hogy ez még egy ,,régi'' korból ittmaradt \textbf{feature}, amikor még az 
+eszközöknek meglehetősen véges volt a rendelkezésre álló memóriája. Ha a dokumentumunkban sok nagyfelbontású 
+grafikát szeretnénk haszálni (ilyeneknek számít pl a szöveg is!), akkor előfordulhatott, hogy ez a memória 
+nem is volt elég. Ezt az információt egyébként egy konfigurációs fájlból szedte ki a program, így ha ezt a fájlt 
+módosítja az ember, a probléma megkerülhető. Valószínűleg azért nem jelentkezett a probléma mindenkinél 
+(például nálam sem), mert az újabb \LaTeX\ verzióknál már default több a konfigban elérhető memória.
+
+\begin{figure}[h!]
+\begin{center}
+\includegraphics[width=0.9\textwidth]{./comic.jpg}
+\end{center}
+  \caption{\textit{Ez az ábrafelirat.} Az ábra jól szemlélteti az egyes programozási 
+  nyelvek sajátosságait.}
+\label{fig:abra}
+\end{figure}
+
+\paragraph{Ez egy paragrafus}
+\lipsum[2-4]
+\begin{equation}
+  \varepsilon=\sum_{i=1}^{n-1} \frac{1}{\Delta x}\int\limits_{x_i}^{x_{i+1}}\left\{\frac{1}{\Delta x}
+  \left[(x_{i+1}-x)y_i^*+(x-x_i)y_{i+1}^*\right]-f(x)\right\}^2dx
+\end{equation}
+
+Végül pedig egy táblázat következik.
+
+\begin{table}[h!]
+\caption{Ez meg egy példatáblázat.}
+\label{tab:tab}
+\begin{center}
+\small
+  \begin{tabular}{r@{,}lc||r}
+
+\hline
+\hline
+    \multicolumn{2}{c}{Első oszlop} & Harmadik oszlop & \multirow{2}{*}{Negyedik oszlop} \\
+     \multicolumn{2}{c}{}           & (De vajon hova lett a második..?) & \\
+\hline
+\hline
+  1 & 2 & 3 & 4 \\
+  5 & 6 & 7 & 8 \\
+\hline
+  9 & 10 & 11 & 12 \\
+\hline
+\hline
+
+\end{tabular}
+\end{center}
+\end{table}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ez ugyanazt tudja, mint a \newpage, azzal a különbséggel, hogy hogyha vannak még függő 
+% ábrák vagy táblázatok, amik még nem lettek elhelyezve, akkor az most itt megtörténik, és 
+% csak utána megyünk tovább. A \newpage most nekünk pl hatástalan lenne.
+\clearpage 
+
+\vspace*{2cm}
+
+% Mivel *-al jelöljük meg az új section-t, nem fog bekerülni a tartalomjegyzékbe, hacsak kézzel hozzá nem adjuk
+\addcontentsline{toc}{section}{Köszönetnyilvánítás}
+\section*{Köszönetnyilvánítás}
+Ez fontos rész, még új oldalt is kezdtünk hozzá. Mindenképp köszönd meg témavezetődnek, családodnak, a Mikulásnak, meg akinek még gondolod. ;)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+
+\newpage \vspace*{2cm}
+
+\addcontentsline{toc}{section}{Irodalomjegyzék}
+\bibliographystyle{abeld}       
+% van egy csomó féle/fajta stílus, google segít bennük. Én ezt használtam a diplomamunkámhoz. 
+% A helyes működéshez az kell, hogy az abeld.bst ugyanebben a mappában legyen.
+\bibliography{references}       
+% a references.bib tartalmazza egyenként a hivatkozásokat, így a tex fájlod tisztább maradhat.
+%
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ----------------------------------- A P P E N D I X -----------------------------------
+
+\newpage \vspace*{2cm}
+
+\pagestyle{fancy}
+
+\appendix
+\section{Ez egy függelék}
+\label{app:fugg}
+
+És igen, ezeket is lehet \ref{app:fugg}. módon hivatkozni.
+
+% -------------------------------- N Y I L A T K O Z A T --------------------------------
+
+% Nagyon hosszú dokumentumoknál (pl könyv) érdemes több részre bontani a forráskódot is.
+% Az \input parancs után következő fájl egyszerűen "bemásolódik", így a fordító egyben 
+% fogja látni az egészet.
+\input nyilatkozat.tex  % EZT NE HAGYD KI! OTT KELL LENNIE A DOLGOZAT VÉGÉN!
+
+
+\end{document}
+
+Ez pedig már nem fog megjelenni, mivel az end document után vagyunk.
