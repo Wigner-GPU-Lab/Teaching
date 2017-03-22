@@ -1,5 +1,6 @@
-set term postscript eps size 1280,720
-set out "sin.eps"
+# set term postscript eps size 1280,720
+set term png size 1280,720
+set out "sin.png"
 
 set title "Original function"
 

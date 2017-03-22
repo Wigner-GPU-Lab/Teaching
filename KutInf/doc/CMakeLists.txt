@@ -6,14 +6,19 @@ project(Doc LANGUAGES NONE)
 list (APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include (UseLATEX)
 
+set(SIN "${CMAKE_BINARY_DIR}/sin.png")
+
 # Target that generates documentation
 add_latex_document(src/latex_template.tex
+                   CONFIGURE src/latex_template.tex
                    TARGET_NAME doc
-                   INPUTS src/nyilatkozat.tex
+                   INPUTS src/nyilatkozat.tex src/abeld.bst
                    BIBFILES src/references.bib
+                   IMAGE_DIRS img
                    #IMAGES img/elte.eps ${CMAKE_BINARY_DIR}/sin.eps
                    DEPENDS src/latex_template.tex plot
                    EXCLUDE_FROM_ALL)
 
 # Process plot CMake script
 add_subdirectory(plot)
+

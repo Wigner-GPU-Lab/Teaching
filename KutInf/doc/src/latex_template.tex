@@ -112,7 +112,7 @@
 
 \begin{figure}[h!]
 \begin{center}
-\includegraphics[width=0.5\textwidth]{./elte.eps}
+\includegraphics[width=0.5\textwidth]{img/elte}
 \end{center}
 \end{figure}
 
@@ -258,7 +258,7 @@ módosítja az ember, a probléma megkerülhető. Valószínűleg azért nem jel
 
 \begin{figure}[h!]
 \begin{center}
-\includegraphics[width=0.9\textwidth]{./comic.jpg}
+\includegraphics[width=0.9\textwidth]{@SIN@}
 \end{center}
   \caption{\textit{Ez az ábrafelirat.} Az ábra jól szemlélteti az egyes programozási 
   nyelvek sajátosságait.}
@@ -318,10 +318,10 @@ Ez fontos rész, még új oldalt is kezdtünk hozzá. Mindenképp köszönd meg 
 \newpage \vspace*{2cm}
 
 \addcontentsline{toc}{section}{Irodalomjegyzék}
-\bibliographystyle{abeld}       
+\bibliographystyle{src/abeld}       
 % van egy csomó féle/fajta stílus, google segít bennük. Én ezt használtam a diplomamunkámhoz. 
 % A helyes működéshez az kell, hogy az abeld.bst ugyanebben a mappában legyen.
-\bibliography{references}       
+\bibliography{src/references}       
 % a references.bib tartalmazza egyenként a hivatkozásokat, így a tex fájlod tisztább maradhat.
 %
 % 
@@ -344,9 +344,10 @@ Ez fontos rész, még új oldalt is kezdtünk hozzá. Mindenképp köszönd meg 
 % Nagyon hosszú dokumentumoknál (pl könyv) érdemes több részre bontani a forráskódot is.
 % Az \input parancs után következő fájl egyszerűen "bemásolódik", így a fordító egyben 
 % fogja látni az egészet.
-\input nyilatkozat.tex  % EZT NE HAGYD KI! OTT KELL LENNIE A DOLGOZAT VÉGÉN!
+\input src/nyilatkozat.tex  % EZT NE HAGYD KI! OTT KELL LENNIE A DOLGOZAT VÉGÉN!
 
 
 \end{document}
 
 Ez pedig már nem fog megjelenni, mivel az end document után vagyunk.
+
