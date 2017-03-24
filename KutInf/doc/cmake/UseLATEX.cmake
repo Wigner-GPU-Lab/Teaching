@@ -742,7 +742,7 @@ function(latex_setup_variables)
     PATHS ${MIKTEX_BINARY_PATH} /usr/bin
     )
 
-  #find_package(UnixCommands)
+  find_package(UnixCommands)
 
   find_program(PDFTOPS_CONVERTER
     NAMES pdftops
