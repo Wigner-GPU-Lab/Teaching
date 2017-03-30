@@ -19,7 +19,7 @@ set (Files_HDRS ${Files_HDRS} ${PROJECT_SOURCE_DIR}/include/OpenCL-C-API-minimal
 
 set (Files_SRCS ${Files_SRCS} ${PROJECT_SOURCE_DIR}/source/OpenCL-C-API-minimal.cpp)
 
-set (Files_KRNS ${Files_KRNS} ${PROJECT_SOURCE_DIR}/kernel/saxpy.cl)
+set (Files_KRNS ${Files_KRNS} ${PROJECT_SOURCE_DIR}/kernel/squarer.cl)
 
 # Generate the configuration file for application to locate kernel files
 configure_file ("${PROJECT_SOURCE_DIR}/include/OpenCL-C-API-minimal-config.in.hpp"

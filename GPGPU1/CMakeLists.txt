@@ -60,7 +60,7 @@ endif (BUILD_CUDA)
   if (CMAKE_C_COMPILER_ID MATCHES "MSVC")
   endif (CMAKE_C_COMPILER_ID MATCHES "MSVC")
   
-    # If compiling with MSVC++
+  # If compiling with MSVC++
   if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   endif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   
