@@ -350,7 +350,7 @@ int main()
 
     // Validate results
     int fail = 0;
-    for (size_t i = 0; i < chainlength; ++i) fail |= y[i] == 3.;
+    for (size_t i = 0; i < chainlength; ++i) fail |= (fabs(y[i] - 3.0) > 1e-10);
 
     if (fail)
     {

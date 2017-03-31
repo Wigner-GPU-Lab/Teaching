@@ -41,6 +41,12 @@ endif (BUILD_CUDA)
   # If compiling on Windows
   if (WIN32)
     find_package (Threads REQUIRED)
+
+	if(CMAKE_VERSION MATCHES "MSVC")
+      message(STATUS "Visual Studio IDE integration detected.")
+	  message(STATUS "Disabling CMake's automatic reconfiguration in favor of IDE detection.")
+	  set(CMAKE_SUPPRESS_REGENERATION ON CACHE BOOL "Disables pre-build rule of checking script timestamps")
+	endif(CMAKE_VERSION MATCHES "MSVC")
   endif (WIN32)
 
   # If compiling under Linux
