@@ -1,0 +1,1 @@
+const char* kernel_location = "${Files_KRNS}";

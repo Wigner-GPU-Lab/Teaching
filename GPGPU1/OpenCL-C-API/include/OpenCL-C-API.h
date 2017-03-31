@@ -1,6 +1,9 @@
 #ifndef HEADER_HPP
 #define HEADER_HPP
 
+// Sample includes
+#include <OpenCL-C-API-config.h>
+
 // C standard includes
 #include <stdlib.h>
 #include <stdio.h>

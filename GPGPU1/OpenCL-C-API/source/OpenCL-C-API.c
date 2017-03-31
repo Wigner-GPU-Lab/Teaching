@@ -297,7 +297,7 @@ int main()
 
     cl_context context = create_standard_context( devices );
 
-    char* src = load_program_file( "C:/Users/Matty/OneDrive/Develop/Egyetem/Active/GPGPU-speci/OpenCL-C-API/src/OpenCL-C-API.cl" );
+    char* src = load_program_file( kernel_location );
 
     cl_program program = build_program_source( context, src );
 
@@ -350,9 +350,13 @@ int main()
 
     // Validate results
     int fail = 0;
-    for (size_t i = 0; i < chainlength; ++i) fail |= y[i] == 3;
+    for (size_t i = 0; i < chainlength; ++i) fail |= y[i] == 3.;
 
-    if (fail) exit(EXIT_FAILURE);
+    if (fail)
+    {
+        printf_s("Validation failed\n");
+        exit(EXIT_FAILURE);
+    }
 
     // Release OpenCL resources
     cl_uint count = 0;
