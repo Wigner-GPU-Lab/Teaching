@@ -51,6 +51,8 @@ __kernel void matmul1(__global double* A,
 			double fB = Bblock[lx*blocksize+i];
 			acc += fA * fB;
 		}
+
+        barrier(CLK_LOCAL_MEM_FENCE);
 	}
 	
 	C[gy * size + gx] = acc;
