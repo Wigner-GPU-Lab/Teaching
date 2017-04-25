@@ -9,7 +9,7 @@ constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
 constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
 constexpr cl::sycl::access::mode sycl_read_write = cl::sycl::access::mode::read_write;
 
-template <typename T> class MatulKernel;
+template <typename T> class MatmulKernel;
 
 template <typename T>
 void matmul_kernel(int size, int blocksize, std::vector<T> const& mA, std::vector<T> const& mB, std::vector<T>& mC)
@@ -33,7 +33,7 @@ void matmul_kernel(int size, int blocksize, std::vector<T> const& mA, std::vecto
         cl::sycl::accessor<T, 1, sycl_read_write, cl::sycl::access::target::local> Ablock(local_range, cgh);
         cl::sycl::accessor<T, 1, sycl_read_write, cl::sycl::access::target::local> Bblock(local_range, cgh);
 
-        cgh.parallel_for<class MatulKernel<T>>(global_range, [=](cl::sycl::nd_item<2> i)
+        cgh.parallel_for<class MatmulKernel<T>>(global_range, [=](cl::sycl::nd_item<2> i)
         {
             int lx = i.get_local(0);
 	    int ly = i.get_local(1);
