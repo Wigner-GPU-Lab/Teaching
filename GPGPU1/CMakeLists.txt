@@ -15,11 +15,6 @@ option (BUILD_OPENCL "Build OpenCL samples" ON)
 option (BUILD_SYCL "Build SYCL samples" OFF)
 option (BUILD_CUDA "Build CUDA samples" OFF)
 option (BUILD_AMP "Build C++AMP samples" OFF)
-	
-# OpenCL
-if (BUILD_OPENCL)
-  find_package (OpenCL REQUIRED)
-endif (BUILD_OPENCL)
 
 # CUDA
 if (BUILD_CUDA)
@@ -82,10 +77,7 @@ endif (BUILD_CUDA)
 # Process targets based on user-input
 #
   if (BUILD_OPENCL)
-    add_subdirectory (OpenCL-C-API-minimal)
-    add_subdirectory (OpenCL-C-API)
-	add_subdirectory (OpenCL-C++-API)
-	add_subdirectory (OpenCL-MatrixMul-C-API)
+    add_subdirectory (OpenCL)
   endif (BUILD_OPENCL)
 
   if (BUILD_SYCL)

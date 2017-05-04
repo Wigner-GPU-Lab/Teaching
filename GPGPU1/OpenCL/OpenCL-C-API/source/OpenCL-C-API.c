@@ -5,7 +5,11 @@ void checkErr( cl_int err, const char * name )
 {
     if ( err != CL_SUCCESS )
     {
+#ifdef WIN32
         printf_s("ERROR: %s (%i)\n", name, err);
+#else
+        printf("ERROR: %s (%i)\n", name, err);
+#endif
 
         exit( err );
     }
@@ -25,24 +29,33 @@ void probe_platforms()
         cl_platform_id* platforms = (cl_platform_id*)malloc( numPlatforms * sizeof( cl_platform_id ) );
         CL_err = clGetPlatformIDs( numPlatforms, platforms, NULL );
         checkErr( CL_err, "clGetPlatformIDs(platforms)" );
-
+#ifdef WIN32
         printf_s( "%u platform(s) found:\n", numPlatforms );
+#else
+        printf("%u platform(s) found:\n", numPlatforms);
+#endif
 
         for ( cl_uint i = 0; i < numPlatforms; ++i )
         {
             char pbuf[100];
             CL_err = clGetPlatformInfo( platforms[i], CL_PLATFORM_VENDOR, sizeof( pbuf ), pbuf, NULL );
             checkErr( CL_err, "clGetPlatformInfo(CL_PLATFORM_VENDOR)" );
-
+#ifdef WIN32
             printf_s( "\t%s\n", pbuf );
+#else
+            printf("\t%s\n", pbuf);
+#endif
         }
 
         free( platforms );
     }
     else
     {
+#ifdef WIN32
         printf_s( "No OpenCL platform detected.\n" );
-
+#else
+        printf("No OpenCL platform detected.\n");
+#endif
         exit( -1 );
     }
 }
@@ -76,8 +89,11 @@ cl_platform_id select_platform()
 
     if ( result == NULL )
     {
+#ifdef WIN32
         printf_s( "No double precision capable HW detected.\n" );
-
+#else
+        printf("No double precision capable HW detected.\n");
+#endif
         exit( -1 );
     }
 
@@ -180,13 +196,21 @@ char* load_program_file( const char* filename )
     size_t res = 0;
     char* src = NULL;
     FILE* file = NULL;
-    errno_t err = 0;
 
+#ifdef WIN32
+    errno_t err = 0;
     err = fopen_s( &file, filename, "rb");
+#else
+    file = fopen(filename, "rb");
+#endif
 
     if ( !file )
     {
+#ifdef WIN32
         printf_s( "Failed to open file %s\n", filename );
+#else
+        printf("Failed to open file %s\n", filename);
+#endif
 
         exit( EXIT_FAILURE );
     }
@@ -237,9 +261,11 @@ cl_program build_program_source( cl_context context, const char* source )
 
     cl_uint numDevices = 0;
     cl_device_id* devices = NULL;
-
+#ifdef WIN32
     const size_t length = strnlen_s(source, UINT_MAX);
-
+#else
+    const size_t length = strlen(source);
+#endif
     result = clCreateProgramWithSource( context, 1, &source, &length, &CL_err );
     checkErr( CL_err, "clCreateProgramWithSource()" );
 
@@ -343,7 +369,11 @@ int main()
     CL_err = clGetEventProfilingInfo( kernel_event, CL_PROFILING_COMMAND_END, sizeof( cl_ulong ), &exec_end, NULL );
     checkErr( CL_err, "clGetEventProfilingInfo(CL_PROFILING_COMMAND_END)" );
 
+#ifdef WIN32
     printf_s( "Kernel execution took: %llu nanoseconds\n", exec_end - exec_start );
+#else
+    printf("Kernel execution took: %lu nanoseconds\n", exec_end - exec_start);
+#endif
 
     CL_err = clEnqueueReadBuffer( queue, buf_y, CL_TRUE, 0, chainlength * sizeof( cl_double ), y, 0, NULL, NULL );
     checkErr( CL_err, "clEnqueueReadBuffer(buf_y)" );
@@ -354,7 +384,11 @@ int main()
 
     if (fail)
     {
+#ifdef WIN32
         printf_s("Validation failed\n");
+#else
+        printf("Validation failed\n");
+#endif
         exit(EXIT_FAILURE);
     }
 
