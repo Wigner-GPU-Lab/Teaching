@@ -1,5 +1,5 @@
 // Config include
-#include <OpenCL-C++-API-config.hpp>
+#include <OpenCL-MatrixMul-C-API-config.hpp>
 
 // OpenCL includes
 #include <CL/cl.h>
