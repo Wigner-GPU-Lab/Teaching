@@ -1,9 +1,4 @@
-#include <CL/sycl.hpp>
-#include <iostream>
-#include <random>
-#include <chrono>
-#include <vector>
-#include <algorithm>
+#include <SYCL-MatrixMul.hpp>
 
 constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
 constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
@@ -14,7 +9,7 @@ template <typename T> class MatmulKernel;
 template <typename T>
 void matmul_kernel(int size, int blocksize, std::vector<T> const& mA, std::vector<T> const& mB, std::vector<T>& mC)
 {
-   cl::sycl::queue deviceQueue{cl::sycl::gpu_selector()};
+   cl::sycl::queue deviceQueue/*{cl::sycl::gpu_selector()}*/;
 
   cl::sycl::buffer<T, 1> ba(mA.data(), size*size);
   cl::sycl::buffer<T, 1> bb(mB.data(), size*size);
