@@ -85,6 +85,7 @@ endif (BUILD_CUDA)
     add_subdirectory (OpenCL-C-API-minimal)
     add_subdirectory (OpenCL-C-API)
 	add_subdirectory (OpenCL-C++-API)
+	add_subdirectory (OpenCL-MatrixMul-C-API)
   endif (BUILD_OPENCL)
 
   if (BUILD_SYCL)

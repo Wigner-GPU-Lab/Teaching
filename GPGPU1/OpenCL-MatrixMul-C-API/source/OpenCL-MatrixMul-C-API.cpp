@@ -1,13 +1,4 @@
-#include <sstream>
-#include <fstream>
-#include <algorithm>
-#include <memory>
-#include <iostream>
-#include <numeric>
-#include <vector>
-#include <random>
-#include <chrono>
-#include <CL\cl.h>
+#include <OpenCL-MatrixMul-C-API.hpp>
 
 int main()
 {
@@ -26,7 +17,7 @@ int main()
 	cl_queue_properties qps[] = { CL_QUEUE_PROPERTIES, cqps, 0 };
 	auto queue = clCreateCommandQueueWithProperties(context, device, &qps[0], &status);
 
-	std::ifstream file("matmul.cl");
+	std::ifstream file(kernel_location.c_str());
 	std::string source( std::istreambuf_iterator<char>(file), (std::istreambuf_iterator<char>()));
 	size_t      sourceSize = source.size();
 	const char* sourcePtr  = source.c_str();
