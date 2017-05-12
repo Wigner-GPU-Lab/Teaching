@@ -13,14 +13,8 @@ project (GPGPU-speci)
 # Behavioural options for the solution
 option (BUILD_OPENCL "Build OpenCL samples" ON)
 option (BUILD_SYCL "Build SYCL samples" OFF)
-option (BUILD_CUDA "Build CUDA samples" OFF)
-option (BUILD_AMP "Build C++AMP samples" OFF)
+option (BUILD_OPENGL "Build OpenGL samples" OFF)
 
-# CUDA
-if (BUILD_CUDA)
-  find_package (CUDA REQUIRED)
-endif (BUILD_CUDA)
-	
 #
 # Set platform-independent variables
 #
@@ -84,10 +78,6 @@ endif (BUILD_CUDA)
     add_subdirectory (SYCL)
   endif (BUILD_SYCL)
 
-  if (BUILD_CUDA)
-    add_subdirectory (CUDA)
-  endif (BUILD_CUDA)
-
-  if (BUILD_AMP)
-    add_subdirectory (C++AMP)
-  endif (BUILD_AMP)
+  if (BUILD_OPENGL)
+    add_subdirectory (OpenGL)
+  endif (BUILD_OPENGL)
