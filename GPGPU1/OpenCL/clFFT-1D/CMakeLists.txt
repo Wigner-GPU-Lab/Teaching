@@ -25,8 +25,9 @@ source_group ("Sources" FILES ${Files_SRCS})
 add_executable (${PROJECT_NAME} ${Files_BUILD})
 
 # Append our project's include directory to the "#include <>" paths as well as dependencies
-target_include_directories (${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include/)
-target_include_directories (${PROJECT_NAME} PRIVATE ${OpenCL_INCLUDE_DIRS})
+target_include_directories (${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/include/
+                                                   ${OpenCL_INCLUDE_DIRS} 
+												   ${CLFFT_INCLUDE_DIRS})
 
 # Link dependencies
 target_link_libraries (${PROJECT_NAME} ${OpenCL_LIBRARIES} clFFT Threads::Threads)

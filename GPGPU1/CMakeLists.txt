@@ -13,7 +13,7 @@ project (GPGPU-speci)
 # Behavioural options for the solution
 option (BUILD_OPENCL "Build OpenCL samples" ON)
 option (BUILD_SYCL "Build SYCL samples" OFF)
-option (BUILD_OPENGL "Build OpenGL samples" OFF)
+option (BUILD_OPENGL "Build OpenGL samples" ON)
 
 #
 # Set platform-independent variables

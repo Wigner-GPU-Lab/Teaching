@@ -1,5 +1,4 @@
-#ifndef HEADER_HPP
-#define HEADER_HPP
+#pragma once
 
 // Standard C++ includes
 #include <iostream>
@@ -13,14 +12,23 @@
 #include <chrono>
 
 // OpenCL C++ includes
-#ifdef WIN32
-#pragma warning(disable : 4996) // Disable warning for usage of deprecated functions
-#endif
-#include <CL/cl.hpp>
-
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_MINIMUM_OPENCL_VERSION 100
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+#include <CL/cl2.hpp>
 
 // clFFT includes
 #include <clFFT.h>
+
+
+namespace util
+{
+    template <cl_int From, cl_int To, typename Dur = std::chrono::nanoseconds>
+    auto get_duration(cl::Event& ev)
+    {
+        return std::chrono::duration_cast<Dur>(std::chrono::nanoseconds{ ev.getProfilingInfo<To>() - ev.getProfilingInfo<From>() });
+    }
+}
 
 void checkerr(cl_int err, const char* name)
 {
@@ -33,18 +41,6 @@ void checkerr(cl_int err, const char* name)
 
 namespace cl
 {
-	template <cl_bitfield From, cl_bitfield To>
-	std::chrono::nanoseconds event_time_elapsed(const cl::Event& evnt)
-	{
-		cl_int error;
-		cl_ulong from, to;
-
-		from = evnt.getProfilingInfo<From>(&error); checkerr(error, "cl::Event::getProfilingInfo(from)");
-		to = evnt.getProfilingInfo<To>(&error); checkerr(error, "cl::Event::getProfilingInfo(to)");
-
-		return std::chrono::nanoseconds(to - from);
-	}
-
 	namespace fft
 	{
 		clfftStatus	bakePlan(clfftPlanHandle plHandle, cl::CommandQueue& commQueueFFT)
@@ -79,44 +75,3 @@ namespace cl
 		}
 	}
 } // namescpace cl
-
-class Workflow
-{
-public:
-
-	Workflow() : events(4, cl::Event()) {}
-	Workflow(const Workflow&) = default;
-	Workflow(Workflow&&) = default;
-	~Workflow() = default;
-
-	enum Events
-	{
-		Write = 0,
-		Migrate = 1,
-		Exec = 2,
-		Read = 3
-	};
-
-	std::vector<cl::Event> events;
-};
-
-template <Workflow::Events Event, cl_bitfield From, cl_bitfield To>
-struct workflow_time_comparator
-{
-	bool operator()(const Workflow& lhs, const Workflow& rhs)
-	{
-		return cl::event_time_elapsed<From, To>(lhs.events.at(Event)) < cl::event_time_elapsed<From, To>(rhs.events.at(Event));
-	}
-};
-
-template <Workflow::Events Event, cl_bitfield From, cl_bitfield To>
-void report_workflow_stage(const std::string& message, const std::vector<Workflow>& workflows)
-{
-	auto max = std::max_element(workflows.cbegin(), workflows.cend(), workflow_time_comparator<Event, From, To>());
-	std::cout << message << " = " << std::chrono::duration_cast<std::chrono::milliseconds>(cl::event_time_elapsed<From, To>(max->events.at(Event))).count() << " milliseconds.\n" << std::endl;
-	for (auto& flow : workflows)
-		std::cout << "\t" << std::chrono::duration_cast<std::chrono::milliseconds>(cl::event_time_elapsed<From, To>(flow.events.at(Event))).count() << " milliseconds." << std::endl;
-	std::cout << std::endl;
-}
-
-#endif // HEADER_HPP
