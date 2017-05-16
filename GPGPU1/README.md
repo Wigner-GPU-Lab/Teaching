@@ -45,6 +45,14 @@ We __highly recommend both installing and building 64-bit binaries__ on systems 
         * Visual Studio ships with a fork of CMake that drives the IDE experience, though having a more recent seperate install can come in handy.
     * When used from the command-line or through another IDE, one can obtain the __Build Tools for Visual Studio 2017__ from [here](https://www.visualstudio.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=15).
 * OpenCL implementations ship with your vendors GPU drivers.
+* clFFT can be installed in one of two ways
+    * Fetch a pre-built binary from the project [releases section](https://github.com/clMathLibraries/clFFT/releases).
+    * Build it from source via CMake
+* clBAS can be installed in one of two ways
+    * Fetch a pre-built binary from the project [releases section](https://github.com/clMathLibraries/clBLAS/releases).
+    * Build it from source via CMake
+        * `cmake -G "Visual Studio 15 2017 Win64" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<where_you_want_to_install> -DBUIL
+D_SHARED_LIBS=OFF -DBUILD_CLIENT=OFF -DBUILD_SAMPLE=OFF -DBUILD_TEST=OFF -DBUILD_KTEST=OFF <path_to_source_root>/src`
 * OpenGL implementations ship with your vendors GPU drivers.
 * SFML pre-built binaries can be obtained from the projects [downloads section](https://www.sfml-dev.org/download.php). Visual C++ 14 (2015) are built using platform toolset v140, which is binary compatible with toolset v141 used by VS 15 (2017) products.
     * After installing, create a (user-level is sufficient) environmental variable with the name SFML_ROOT holding the path to the SFML install root directory. This is so that the FindSFML.cmake scripts that ship with SFML find the installation properly.

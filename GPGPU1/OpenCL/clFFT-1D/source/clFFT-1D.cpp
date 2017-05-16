@@ -2,196 +2,131 @@
 
 int main()
 {
-	// Test params
-	std::size_t batch = 256;
-	std::size_t N = 1024;
+    // Test params
+    std::size_t batch = 128;
+    std::array<std::size_t, 1> lengths = { 65536 };
+    cl_device_type dev_type = CL_DEVICE_TYPE_GPU;
 
-	// Host side container and init
-	std::vector<std::complex<float>> x;
-	std::vector<std::default_random_engine> prngs;
-	std::uniform_real_distribution<float> dist;
+    try
+    {
+        std::vector<cl::Platform> platforms;
+        cl::Platform::get(&platforms);
 
-	// OpenCL variables
-	cl_int err = CL_SUCCESS;
-	cl_device_type dev_type = CL_DEVICE_TYPE_GPU;
-	std::vector<cl::Platform> platforms;
-	cl::Platform platform;
-	std::vector<cl::Device> devices;
-	std::array<cl_context_properties, 3> cprops;
-	cl::Context context;
-	std::vector<cl::CommandQueue> queues;
-	std::vector<cl::Buffer> bufs_x;
-	std::vector<Workflow> workflows;
+        for (const auto& platform : platforms) std::cout << "Found platform: " << platform.getInfo<CL_PLATFORM_VENDOR>() << std::endl;
 
-	// clFFT variables
-	std::vector<clfftPlanHandle> plans;
-	clfftDim dim;
-	std::array<std::size_t, 2> clLengths;
-	clfftSetupData fftSetup;
+        // Choose first platform with the desired device type
+        auto plat = std::find_if(platforms.cbegin(), platforms.cend(), [dev_type](const cl::Platform& plat)
+        {
+            std::vector<cl::Device> devs;
 
-	// OpenCL initialization
-	std::cout << "Initializing OpenCL" << std::endl;
-	err = cl::Platform::get(&platforms); checkerr(err, "cl::Platform::get");
+            plat.getDevices(dev_type, &devs);
+            return !devs.empty();
+        });
 
-	auto plat_it = std::find_if(platforms.cbegin(), platforms.cend(), [dev_type, &err](const cl::Platform& plat)
-	{
-		std::vector<cl::Device> devs;
+        if (plat != platforms.cend())
+            std::cout << "Selected platform: " << plat->getInfo<CL_PLATFORM_VENDOR>() << std::endl;
+        else
+            throw std::runtime_error{ "No device of the desired type found." };
 
-		err = plat.getDevices(dev_type, &devs); checkerr(err, "cl::Platform::getDevices");
-		return !devs.empty();
-	});
+        std::vector<cl::Device> devices;
+        plat->getDevices(dev_type, &devices);
 
-	if (plat_it == platforms.cend())
-	{
-		std::cerr << "No platform found with desired device type. Exiting..." << std::endl;
-		exit(EXIT_FAILURE);
-	}
+        // Select first device (no multi-device just yet)
+        cl::Device device = devices.at(0);
 
-	platform = *plat_it;
-	std::cout << "Selected platform:\n\n\t" << platform.getInfo<CL_PLATFORM_NAME>() << "\n" << std::endl;
+        std::cout << "Selected device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
 
-	platform.getDevices(dev_type, &devices);
-	std::cout << "Selected devices:\n\n";
-	for (auto& device : devices)
-		std::cout << "\t" << device.getInfo<CL_DEVICE_NAME>() << std::endl;
-	std::cout << std::endl;
+        // Create context and queue
+        std::vector<cl_context_properties> props{ CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>((*plat)()), 0 };
+        cl::Context context{ devices, props.data() };
 
-	cprops = { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>(platform()), 0 };
+        cl::CommandQueue queue{ context, device, cl::QueueProperties::Profiling };
 
-	context = cl::Context(devices, cprops.data(), nullptr, nullptr, &err); checkerr(err, "cl::Context::Context");
+        // Fill arrays with random values between 0 and 100
+        auto prng = [engine = std::default_random_engine{},
+                     distribution = std::uniform_real_distribution<cl_float>{ -100.0, 100.0 }]() mutable
+        {
+            return std::complex<cl_float>{ distribution(engine),
+                                        distribution(engine) };
+        };
 
-	queues.resize(devices.size());
-	std::transform(devices.cbegin(), devices.cend(), queues.begin(), [&context](const cl::Device& dev) { return cl::CommandQueue(context, dev, CL_QUEUE_PROFILING_ENABLE/* | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE*/); });
+        std::vector<std::complex<cl_float>> vec_x;
+        vec_x.reserve(batch * lengths.at(0));
 
-	if (batch % devices.size() != 0)
-	{
-		std::cerr << "Device count is not a divisor of batch size. Exiting..." << std::endl;
-		exit(EXIT_FAILURE);
-	}
+        std::generate_n(std::back_inserter(vec_x), batch * lengths.at(0), prng);
 
-	bufs_x.resize(devices.size());
-	for (auto& buf : bufs_x)
-	{
-		buf = cl::Buffer(context, CL_MEM_READ_WRITE, batch / devices.size() * N * N * sizeof(std::complex<float>), nullptr, &err); checkerr(err, "cl::Buffer::Buffer");
-	}
+        cl::Buffer buf_x{ context, std::begin(vec_x), std::end(vec_x), false };
 
-	// Host-side initialization
-	std::cout << "Generating random input" << std::endl;
+        // clFFT initialization
+        std::cout << "Initializing clFFT" << std::endl;
+        cl::fft::Runtime fft_runtime;
+        cl::fft::Plan fft_plan{ context,
+                                lengths.begin(), lengths.end(),
+                                batch,
+                                clfftPrecision::CLFFT_SINGLE,
+                                clfftLayout::CLFFT_COMPLEX_INTERLEAVED,
+                                clfftLayout::CLFFT_COMPLEX_INTERLEAVED,
+                                clfftResultLocation::CLFFT_INPLACE };
+        fft_plan.bake(queue);
 
-	// Single threaded
-	// std::generate_n(std::back_inserter(x), batch * N * N, [&prng, &dist]() { return dist(prng); });
+        // Start the FFTs
+        auto start = std::chrono::high_resolution_clock::now();
 
-	// Multi-threaded
-	{
-		std::vector<std::future<void>> futures;
-		std::vector<std::vector<std::complex<float>>> temps(std::thread::hardware_concurrency());
-		prngs.resize(std::thread::hardware_concurrency());
+        // Explicit dispatch of data before launch
+        std::vector<cl::Event> dispatch(1);
+        queue.enqueueWriteBuffer(buf_x,
+                                 CL_FALSE,
+                                 0,
+                                 batch * lengths.at(0) * sizeof(std::complex<cl_float>),
+                                 vec_x.data(),
+                                 nullptr,
+                                 &dispatch.at(0));
+        // Execute the plan
+        std::vector<cl::Event> exec{ cl::fft::transform(cl::fft::TransformArgs{ fft_plan,
+                                                                                queue,
+                                                                                clfftDirection::CLFFT_FORWARD,
+                                                                                dispatch },
+                                                        buf_x) };
 
-		for (unsigned int i = 0; i < std::thread::hardware_concurrency(); ++i)
-			futures.push_back(std::async(std::launch::async, [=](std::reference_wrapper<std::vector<std::complex<float>>> temp, std::default_random_engine& prng, std::uniform_real_distribution<float> dist)
-			{
-				std::generate_n(std::back_inserter(temp.get()), batch * N * N / std::thread::hardware_concurrency(), [&prng, &dist]() { return dist(prng); });
-			}, std::ref(temps.at(i)), prngs.at(i), dist));
+        // Initiate data fetch from devices
+        cl::Event fetch;
+        queue.enqueueReadBuffer(buf_x,
+                                CL_FALSE,
+                                0,
+                                batch * lengths.at(0) * sizeof(std::complex<cl_float>),
+                                vec_x.data(),
+                                &exec,
+                                &fetch);
+        // Wait to finish
+        queue.flush();
+        fetch.wait();
 
-		for (auto& future : futures) future.wait();
-		for (auto& temp : temps) x.insert(x.end(), temp.begin(), temp.end());
-	}
+        // End time
+        auto end = std::chrono::high_resolution_clock::now();
 
-	// clFFT initialization
-	std::cout << "Initializing clFFT" << std::endl;
-	dim = CLFFT_2D;
-	clLengths = { N, N };
+        std::cout << "Total time as measured by std::chrono::high_precision_timer =\n\n\t" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " milliseconds.\n" << std::endl;
+        std::cout << "Data dispatch as measured by cl::Event::getProfilingInfo =\n\n\t" << util::get_duration<CL_PROFILING_COMMAND_START, CL_PROFILING_COMMAND_END, std::chrono::milliseconds>(dispatch.at(0)).count() << " milliseconds.\n" << std::endl;
+        std::cout << "FFT execution as measured by cl::Event::getProfilingInfo =\n\n\t" << util::get_duration<CL_PROFILING_COMMAND_START, CL_PROFILING_COMMAND_END, std::chrono::milliseconds>(exec.at(0)).count() << " milliseconds.\n" << std::endl;
+        std::cout << "Data fetch as measured by cl::Event::getProfilingInfo =\n\n\t" << util::get_duration<CL_PROFILING_COMMAND_START, CL_PROFILING_COMMAND_END, std::chrono::milliseconds>(fetch).count() << " milliseconds.\n" << std::endl;
+    }
+    catch (cl::fft::Error error) // If any clFFT error happens
+    {
+        std::cerr << error.what() << "(" << error.status() << ")" << std::endl;
 
-	err = clfftInitSetupData(&fftSetup); checkerr(err, "clfftInitSetupData");
-	err = clfftSetup(&fftSetup); checkerr(err, "clffftSetup");
+        std::exit(error.status());
+    }
+    catch (cl::Error error) // If any OpenCL error happens
+    {
+        std::cerr << error.what() << "(" << error.err() << ")" << std::endl;
 
-	plans.resize(devices.size());
-	for (std::size_t i = 0; i < plans.size(); ++i)
-	{
-		err = clfftCreateDefaultPlan(&plans.at(i), context(), dim, clLengths.data()); checkerr(err, "clCreateDefaultPlan");
+        std::exit(error.err());
+    }
+    catch (std::exception error) // If STL/CRT error occurs
+    {
+        std::cerr << error.what() << std::endl;
 
-		err = clfftSetPlanBatchSize(plans.at(i), batch / devices.size()); checkerr(err, "clfftSetPlanBatchSize");
-		err = clfftSetPlanPrecision(plans.at(i), CLFFT_SINGLE); checkerr(err, "clfftSetPlanPrecision");
-		err = clfftSetLayout(plans.at(i), CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED); checkerr(err, "clfftSetLayout");
-		err = clfftSetResultLocation(plans.at(i), CLFFT_INPLACE); checkerr(err, "clfftSetResultLocation");
+        std::exit(EXIT_FAILURE);
+    }
 
-		// Bake plan
-		err = cl::fft::bakePlan(plans.at(i), queues.at(i)); checkerr(err, "clfftBakePlan");
-	}
-
-	// Start time
-	std::cout << "Starting " << batch << " count " << N << " * " << N << " std::complex<float> FFTs" << std::endl;
-	auto start = std::chrono::high_resolution_clock::now();
-	{
-		// Initiate data copy to devices
-		workflows.resize(devices.size());
-		for (std::size_t i = 0; i < devices.size(); ++i)
-		{
-			err = queues.at(i).enqueueWriteBuffer(bufs_x.at(i),
-												  CL_FALSE,
-												  0,
-												  batch / devices.size() * N * N * sizeof(std::complex<float>),
-												  x.data() + i * batch / devices.size() * N * N,
-												  nullptr,
-												  &workflows.at(i).events.at(Workflow::Events::Write));
-			checkerr(err, "cl::CommandQueue::enqueueWriteBuffer");
-			
-			err = queues.at(i).enqueueMigrateMemObjects({ bufs_x.at(i) },
-														0,
-														nullptr,
-														//&std::vector<cl::Event>{workflows.at(i).events.at(Workflow::Events::Write)},
-														&workflows.at(i).events.at(Workflow::Events::Migrate));
-			checkerr(err, "cl::CommandQueue::enqueueMigrateBuffer");
-			
-			err = queues.at(i).flush(); checkerr(err, "cl::CommandQueue::flush");
-		}
-
-		// Execute the plan
-		for (std::size_t i = 0; i < plans.size(); ++i)
-		{
-			err = cl::fft::enqueueTransform(plans.at(i),
-											CLFFT_FORWARD,
-											queues.at(i),
-											{},
-											workflows.at(i).events.at(Workflow::Events::Exec),
-											bufs_x.at(i));
-		}
-
-		// Initiate data fetch from devices
-		for (std::size_t i = 0; i < devices.size(); ++i)
-		{
-			err = queues.at(i).enqueueReadBuffer(bufs_x.at(i),
-												 CL_FALSE,
-												 0,
-												 batch / devices.size() * N * N * sizeof(std::complex<float>),
-												 x.data() + i * batch / devices.size() * N * N,
-												 nullptr,
-												 &workflows.at(i).events.at(Workflow::Events::Read));
-			checkerr(err, "cl::CommandQueue::enqueueReadBuffer");
-
-			err = queues.at(i).flush(); checkerr(err, "cl::CommandQueue::flush");
-		}
-
-		// Wait for copy to complete
-		for (auto& queue : queues)
-		{
-			err = queue.finish(); checkerr(err, "cl::CommandQueue::finish");
-		}
-	}
-	// End time
-	auto end = std::chrono::high_resolution_clock::now();
-
-	// Display timings
-	std::cout << "Total time as measured by std::chrono::high_precision_timer =\n\n\t" << std::chrono::duration_cast<std::chrono::milliseconds>(end.time_since_epoch() - start.time_since_epoch()).count() << " milliseconds.\n" << std::endl;
-
-	//report_workflow_stage<Workflow::Events::Write,   CL_PROFILING_COMMAND_SUBMIT, CL_PROFILING_COMMAND_END>("Host-device init as measured by cl::Event::getProfilingInfo", workflows);
-	report_workflow_stage<Workflow::Events::Migrate, CL_PROFILING_COMMAND_QUEUED, CL_PROFILING_COMMAND_END>("Host-device copy as measured by cl::Event::getProfilingInfo", workflows);
-	report_workflow_stage<Workflow::Events::Exec,    CL_PROFILING_COMMAND_START, CL_PROFILING_COMMAND_END>("Fourier transform as measured by cl::Event::getProfilingInfo", workflows);
-	report_workflow_stage<Workflow::Events::Read,    CL_PROFILING_COMMAND_SUBMIT, CL_PROFILING_COMMAND_END>("Device-host copy as measured by cl::Event::getProfilingInfo", workflows);
-
-	// Release non-RAII resources in reverse order
-	for (auto& plan : plans) err = clfftDestroyPlan(&plan);
-	clfftTeardown();
-
-	return 0;
+    return EXIT_SUCCESS;
 }
