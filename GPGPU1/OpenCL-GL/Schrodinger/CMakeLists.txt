@@ -45,7 +45,8 @@ target_include_directories (${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/include
                                                    ${SFML_INCLUDE_DIR})
 
 # Link dependencies
-target_link_libraries (${PROJECT_NAME} ${OpenCL_LIBRARIES}
+target_link_libraries (${PROJECT_NAME} ${OPENGL_LIBRARIES}
+                                       ${OpenCL_LIBRARIES}
                                        Threads::Threads
                                        GLEW::GLEW
                                        ${SFML_LIBRARIES}

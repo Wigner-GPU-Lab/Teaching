@@ -136,34 +136,11 @@ struct CL
     }
 };
 
-//OpenGL Functions Signatures:
-typedef void (*F_GenBuffers) (GLsizei, GLuint*);
-typedef void (*F_BindBuffer) (GLenum target, GLuint buffer);
-typedef void (*F_BufferData) (GLenum target, GLsizeiptr size, const GLvoid * data, GLenum usage);
-typedef void (*F_GenVertexArrays) (GLsizei n, GLuint *arrays);
-typedef void (*F_BindVertexArray) (GLuint array);
-typedef void (*F_VertexAttribPointer) (	GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer);
-typedef void (*F_EnableVertexAttribArray) (GLuint index);
-typedef GLuint (*F_CreateShader) (GLenum shaderType);
-
-typedef void (*F_ShaderSource) (GLuint shader, GLsizei count, const GLchar **string, const GLint *length);
-typedef void (*F_CompileShader) (GLuint shader);
-typedef GLuint (*F_CreateProgram) (void);
-typedef void (*F_AttachShader) (GLuint program, GLuint shader);
-typedef void (*F_LinkProgram) (GLuint program);
-typedef GLuint (*F_UseProgram) (GLuint program);
-
-typedef void (*F_BindAttribLocation) (GLuint program, GLuint index, const GLchar *name);
-typedef void (*F_GetShaderiv) (GLuint shader, GLenum pname, GLint *params);
-typedef void (*F_GetShaderInfoLog) (GLuint shader, GLsizei maxLength, GLsizei* length, GLchar* infoLog);
-
 int main()
 {
-    //sf::ContextSettings context(24, 8, 2, 3, 3);
-    //sf::RenderWindow window(sf::VideoMode(1024, 768), "OpenGL 2D Function", sf::Style::Default, context);
     sf::RenderWindow window(sf::VideoMode(1000, 600), "Hello Schrödinger");
     CL cl;
-    cl.set_kernel( "sss.cl", "sssh" );
+    cl.set_kernel( KERNEL_PATH, "sssh" );
 
     std::vector<Float4> lines, linesu;
 
@@ -211,25 +188,8 @@ int main()
         linesu[i].b = 1.0f;
     }
 
-    //Initialize openGL objects:
-    //OpenGL Functions Pointers:
-    auto glGenBuffers      = (F_GenBuffers)     wglGetProcAddress("glGenBuffers");
-    auto glBindBuffer      = (F_BindBuffer)     wglGetProcAddress("glBindBuffer");
-    auto glBufferData      = (F_BufferData)     wglGetProcAddress("glBufferData");
-    auto glGenVertexArrays = (F_GenVertexArrays)wglGetProcAddress("glGenVertexArrays");
-    auto glBindVertexArray = (F_BindVertexArray)wglGetProcAddress("glBindVertexArray");
-    auto glVertexAttribPointer = (F_VertexAttribPointer)wglGetProcAddress("glVertexAttribPointer");
-    auto glEnableVertexAttribArray = (F_EnableVertexAttribArray)wglGetProcAddress("glEnableVertexAttribArray");
-    auto glCreateShader = (F_CreateShader)wglGetProcAddress("glCreateShader");
-    auto glShaderSource = (F_ShaderSource)wglGetProcAddress("glShaderSource");
-    auto glCompileShader = (F_CompileShader)wglGetProcAddress("glCompileShader");
-    auto glCreateProgram = (F_CreateProgram)wglGetProcAddress("glCreateProgram");
-    auto glAttachShader = (F_AttachShader)wglGetProcAddress("glAttachShader");
-    auto glLinkProgram = (F_LinkProgram)wglGetProcAddress("glLinkProgram");
-    auto glUseProgram = (F_UseProgram)wglGetProcAddress("glUseProgram");
-    auto glBindAttribLocation = (F_BindAttribLocation)wglGetProcAddress("glBindAttribLocation");
-    auto glGetShaderiv = (F_GetShaderiv)wglGetProcAddress("glGetShaderiv");
-    auto glGetShaderInfoLog = (F_GetShaderInfoLog)wglGetProcAddress("glGetShaderInfoLog");
+    // GLEW inicializalas
+    if (glewInit() != GLEW_OK) std::exit(EXIT_FAILURE);
 
 	GLuint lines_vbo = 0;
 	glGenBuffers(1, &lines_vbo);
@@ -255,11 +215,11 @@ int main()
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, NULL);
 	glEnableVertexAttribArray(0);
 
-	std::ifstream vs_file("schvs.glsl");
-	std::string vs_code{std::istreambuf_iterator<char>(vs_file), std::istreambuf_iterator<char>()};
+	std::ifstream vs_file(VERTEX_SHADER_PATH);
+    std::string vs_code{ std::istreambuf_iterator<char>(vs_file), std::istreambuf_iterator<char>() };
 	
-	std::ifstream fs_file("schfs.glsl");
-	std::string fs_code{std::istreambuf_iterator<char>(fs_file), std::istreambuf_iterator<char>()};
+	std::ifstream fs_file(FRAGMENT_SHADER_PATH);
+    std::string fs_code{ std::istreambuf_iterator<char>(fs_file), std::istreambuf_iterator<char>() };
 
 	GLint result = GL_FALSE;
     int logLength;
@@ -276,7 +236,7 @@ int main()
     {
 	    std::vector<char> ShaderError((logLength > 1) ? logLength : 1);
         glGetShaderInfoLog(vs, logLength, NULL, &ShaderError[0]);
-        //MessageBoxA(0, &ShaderError[0], "", 0);
+        std::cerr << std::string(ShaderError.cbegin(), ShaderError.cend()) << std::endl;
     }
 
 	GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
@@ -288,7 +248,7 @@ int main()
     {
 	    std::vector<char> ShaderError((logLength > 1) ? logLength : 1);
         glGetShaderInfoLog(fs, logLength, NULL, &ShaderError[0]);
-        //MessageBoxA(0, &ShaderError[0], "", 0);
+        std::cerr << std::string(ShaderError.cbegin(), ShaderError.cend()) << std::endl;
     }
 
 	GLuint shader = glCreateProgram();
