@@ -15,7 +15,6 @@ add_latex_document(src/latex_template.tex
                    INPUTS src/nyilatkozat.tex src/abeld.bst
                    BIBFILES src/references.bib
                    IMAGE_DIRS img
-                   #IMAGES img/elte.eps ${CMAKE_BINARY_DIR}/sin.eps
                    DEPENDS src/latex_template.tex plot
                    EXCLUDE_FROM_ALL)
 

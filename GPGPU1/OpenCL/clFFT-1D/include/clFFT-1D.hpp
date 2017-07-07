@@ -174,8 +174,9 @@ namespace cl
             template<typename InputIt>
             void bake(InputIt first, InputIt last)
             {
-                std::vector<cl::CommandQueue> queues;
-                std::copy(first, last, std::back_inserter(queues));
+                std::vector<cl_command_queue> queues;
+                queues.reserve(std::distance(first, last));
+                std::transform(first, last, std::back_inserter(queues), [](const cl::CommandQueue& cpp_queue) { return cpp_queue(); });
 
                 clfftStatus status = clfftBakePlan(m_handle, static_cast<cl_uint>(queues.size()), queues.data(), nullptr, nullptr);
                 if (status != clfftStatus::CLFFT_SUCCESS)
@@ -190,11 +191,11 @@ namespace cl
 
         class TransformArgs
         {
-            friend cl::Event transform(TransformArgs& args,
+            friend cl::Event transform(TransformArgs args,
                                        cl::Buffer& input_buffer,
                                        cl::Buffer& output_buffer);
 
-            friend cl::Event transform(TransformArgs& args,
+            friend cl::Event transform(TransformArgs args,
                                        cl::Buffer& input_buffer);
         public:
 
@@ -233,7 +234,7 @@ namespace cl
                 : m_plan{ plan }
                 , m_queue{ queue }
                 , m_dir{ dir }
-                , m_events{}
+                , m_events(0)
                 , m_tmp{ tmp }
             {
             }
@@ -247,9 +248,9 @@ namespace cl
             cl::Buffer m_tmp;
         };
 
-        cl::Event transform(TransformArgs& args,
-                            cl::Buffer& input_buffer,
-                            cl::Buffer& output_buffer)
+        cl::Event transform(TransformArgs args,
+                            cl::Buffer input_buffer,
+                            cl::Buffer output_buffer)
         {
             clfftStatus status;
             cl::Event result;
@@ -285,7 +286,7 @@ namespace cl
             return result;
         }
 
-        cl::Event transform(TransformArgs& args,
+        cl::Event transform(TransformArgs args,
                             cl::Buffer& input_buffer)
         {
             clfftStatus status;
@@ -327,14 +328,14 @@ namespace cl
             return clfftBakePlan(plHandle, 1u, &commQueueFFT(), nullptr, nullptr);
 		}
 
-		clfftStatus enqueueTransform(clfftPlanHandle& plHandle,
+		clfftStatus enqueueTransform(clfftPlanHandle plHandle,
 									 clfftDirection dir,
-									 cl::CommandQueue& queue,
+									 cl::CommandQueue queue,
 									 const std::vector<cl::Event>& waitEvents,
-									 cl::Event& outEvent,
-									 cl::Buffer& inputBuffer,
-									 cl::Buffer& outputBuffer = cl::Buffer(),
-									 cl::Buffer& tmpBuffer = cl::Buffer())
+									 cl::Event outEvent,
+									 cl::Buffer inputBuffer,
+									 cl::Buffer outputBuffer = cl::Buffer(),
+									 cl::Buffer tmpBuffer = cl::Buffer())
 		{
 			std::vector<cl_event> cl_waitEvents(waitEvents.size());
 			std::transform(waitEvents.cbegin(), waitEvents.cend(), std::back_inserter(cl_waitEvents), [](const cl::Event& evnt) {return evnt();});
