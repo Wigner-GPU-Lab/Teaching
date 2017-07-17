@@ -15,6 +15,8 @@ Minimal user effort manifests in authoring a 'makefile', some definition of all 
 
 Traditionally build systems have centered around ahead-of-time compiled languages, such as Fortran, C/C++ and have relied on file time stamps to detect the minimal set of tasks to execute during a build (and most still do). A common pattern in the compilation process of all ahead-of-time compiled languages is that the input to the process is a set of source files on disk and the result is a set of binary files with a set of intermediate set of binary files, side effects of the build process. Aside from some exceptionally modern build systems, just about all of them take this process as the cornerstone of their foundation.
 
+Since their earliest appearence, build systems have learned to become general purpose task execution engines, which we will soon learn how to put to our advantage.
+
 ### What is a build system generator?
 
 A build system generator is tool that generates makefiles from yet another makefile. Sounds silly, but doing so one can gain portability, human readability or simply flexibility in doing more complex tasks.
