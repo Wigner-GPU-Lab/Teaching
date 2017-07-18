@@ -11,7 +11,7 @@ Before we could go into detail what's going on in this single line of code, we m
 
 ## CMake internals
 
-CMake essentially gets its job done, creating makefiles in the falvor of choice by going through two steps in order: __configuration__ and __generation__.
+CMake essentially gets its job done, creating makefiles in the flavor of choice by going through two steps in order: __configuration__ and __generation__.
 
 ### Configure
 
@@ -21,11 +21,15 @@ The configure step is the first. This is when CMake parses and processes the CMa
 
 Once the scripts have been processed and no errors have been encountered, CMake enters the makefile generation phase. This is the time when the set of processed CMake commands are turned into makefiles which are written to disk.
 
+Do not be taunted by the amount of makefiles generated. They are logically equivalent to whatever was in the CMake scripts. The reason for their complexity is for them to be fast and produce nice, human readable output. They are __generated files__ and are __not meant for editing__ (or even understanding).
+
 ## CMake scripting language
 
-Perhaps the most taunting part of CMake is its scripting language. Compared to modern script languages, CMake has a fairly simple, unexpressive scripting language. The reason for its simplicity, is that it is the common denominator of all build systems. It does not wish to surface features which are complicated (or impossible) to implement in a back-end.
+Perhaps the most daunting part of CMake is its scripting language. Compared to modern script languages, CMake has a fairly simple, unexpressive scripting language. The reason for its simplicity, is that it is the common denominator of all build systems. It does not wish to surface features which are complicated (or impossible) to implement in any back-end.
 
-### Functions (and flow control and varibles)
+Afterall, a simple language is easy to learn.
+
+### Functions (and flow control and variables)
 
 CMakes scripting language is as simple as it gets. There are variables, functions and a few flow control constructs.
 
@@ -53,10 +57,211 @@ function (ARG1 ARG2...)
 
 denoting white-space insensitivity between function names and their arguments and in between function invocations. The same cannot be said for arguments, as there is no delimiting character between arguments. _(see later Types.)_
 
-One will encounter just about all of the above styles in the wild.
+One will encounter just about all of the above styles in the wild. Use a style that is most readable to you.
+
+_NOTE: advanced CMake users might have noticed I have abused the `function` "keyword" which is actually a built-in function name used to define user-defined functions. This crime was done solely for the sake of syntax highlight in Markdown. User-defined functions will come much later in the tutorial, as one can get 95% of the way without custom functions._
 
 ### Types
 
-Perhaps the most troubling part of the language is its type system, or to be precise, the lack of it. The only type is the _string_ type. __Everything__ is a string in CMake.
+Perhaps the most troubling part of the language is its type system, or to be precise, the lack of it. The only type is the _string_ type. __Everything__ is a string in CMake! With this clear, many of the peculiarities will become apparent.
 
-The message command instructs CMake to emit messages to the console at the time the command is encountered.
+Because CMake has been around for some time, the scripting language evolved over time to be more user-friendly, one may encounter coding style that is different from the one presented here. These differences serve as good examples to understand how everything is a string, as well as the way how variables behave.
+
+### Variables
+
+CMake is a Turing-complete scripting language (no proof, but seems much like it). This does not mean one should do more with it than getting a build system running. A crucial part of an imperative scripting language is the notion of variables.
+
+One creates a variable in the following way:
+
+```CMake
+set(MYVAR "Value of my variable")
+```
+
+The `set` function is used to create new variables, set the contents of existing ones, as well as "declare" a variable. Quotation marks needed because there is not much difference in having an empty variable as opposed to not having one at all. _(The difference is detectable, but essentially is able to code only a single bit of information.)_
+
+We have already promised (and not yet proven that)
+
+```CMake
+message("Hello, CMake!")
+```
+
+instructs CMake to emit messages to the console at the time the command is encountered. The argument to `message` is a string. Let's take this argument from a variable.
+
+```CMake
+set(GREETING "Hello, CMake!")
+
+message(GREETING)
+```
+
+What would we see if we ran this CMake script?
+
+```
+GREETING
+-- Configuring done
+-- Generating done
+-- Build files have been written to: ...
+```
+
+Why don't we see the message we actually wanted to? Starting from CMake 3.0 (which means every script from the past 3-4 years) one is allowed to emit the quatation marks to denote a string. Therefor
+
+```CMake
+message(GREETING)
+```
+
+Is nothing more than providing an all capitalized string as the argument to `message`. If we actually wanted to get the contents of our variable named `GREETING`, we would have to "dereference" its name. Users of Bash will find dereferencing familiar. The script
+
+```CMake
+set(GREETING "Hello, CMake!")
+
+message(${GREETING})
+```
+
+will output the exptected
+
+```
+Hello, CMake!
+-- Configuring done
+-- Generating done
+-- Build files have been written to: ...
+```
+
+The ability to omit quotation marks do denote strings (really, the only type) has some interesting consequences.
+
+```CMake
+set(VERB Hello)
+set(NOUN CMake)
+
+set(GREETING "${VERB}, ${NOUN}!")
+
+message(${GREETING})
+```
+
+This example apart from showing that dereferencing is "stronger" than quotation marks actually outputs what we'd expect. What happens if we omit the quotation marks, which we've learned we are allowed to?
+
+```CMake
+set(VERB Hello)
+set(NOUN CMake)
+
+set(GREETING ${VERB}, ${NOUN}!)
+
+message(${GREETING})
+```
+
+Output is
+
+```
+Hello,CMake!
+-- Configuring done
+-- Generating done
+-- Build files have been written to: ...
+```
+
+One space got left behind. If we were to take a look at the documentation page of `message`, we'd see something like this:
+
+```CMake
+message("message to display" ...)
+```
+
+The `message` command takes an arbitrary number of string to display, which it will concatenate without any delimiters. Without placing quotation marks around `${VERB}, ${NOUN}!`, the two became separate function arguments. The only time one needs quotation marks, is if he/she wishes to guard spaces from becoming white-spaces.
+
+## Invoking CMake
+
+Up until this point, we have silently omited the actual invocation of CMake. To allow the reader to follow along and verify all that is shown here, one needs to put to use hopefully some skills already possessed.
+
+### Pre-requisites
+
+Because CMake generates makefiles of a given flavor, we will very soon need an actual makefile execution engine installed.
+
+#### Linux
+
+On Linux, luckily the default generator is `Unix Makefiles` which is most likely already installed. If not, one can install it saying
+
+```bash
+sudo apt install make
+```
+
+or the equivalent command on your distro.
+
+#### Windows
+
+On Windows, there are gazillions of options available to start. For the sake of this tutorial, we will take an incremental approach and favor *nix-style, command-line usage. Also, to obtain output identical to `Unix Makefiles`, we will use the somewhat outdated NMake tool.
+
+To install the NMake build system, we will hit two birds with one stone, since it is bundled with the Microsoft Visual C++ compiler (which we will need later anyway).
+
+Obtain the Build Tools for Visual Studio 2017 from [here](https://www.visualstudio.com/downloads/#build-tools-for-visual-studio-2017), and install only the Visual C++ compilers and libraries as well as the build tools. This will install both MSBuild and NMake.
+
+Because on Windows, the installer will not place these tools onto the `PATH` (for good reasons), one can only use both the compiler and build tools from a so called `Developer Command Prompt`. This is an ordinary `cmd.exe` after invoking `vcvarsall.bat`, a batch script that is bundled with the compiler. This script sets up extra environmental variables required for the build tools and the Visual C++ compiler to work. In the Start Menu, under All Programs, find the folder named Visual Studio 2017, and launch the `x64 Native Tools Command Prompt for VS 2017` (assuming you are running an x64 machine).
+
+### Out-of-source invocation
+
+It is good practice to build compiled languages out-of-source, meaning that all byproducts of the compilation process do not mingle with the actual source files. One can achieve this by building in a subfolder of the sources, or in a totally unrelated directory.
+
+Let's say we have a folder structure that looks like the following:
+
+```
+my_project -+
+            |
+            inc -+
+            |    ...
+            |
+            src -+
+            |    ...
+            |
+            CMakeLists.txt
+            |
+            README.md
+```
+
+In this case, we could either create a `build` folder inside `my_project`, or we could create one that is totally unrelated to it.
+
+Before we actually invoke CMake, there is one more command useful to be familiar with to speed up the process. While our original
+
+```CMake
+message("Hello, CMake!")
+```
+
+script would do just as we intended it to, it might be useful to add just one more line to it.
+
+```CMake
+project(Hello LANGUAGES NONE)
+
+message("Hello, CMake!")
+```
+
+By default, CMake assumes one is using it to compile C/C++ applications, and as such it tries to look for a C/C++ compiler installed on the machine. Even if one has a properly configured compiler and command-line, this detection takes time, which for the moment is totally unneccessary.
+
+The `project` function takes a project name, after which one may specify the languages that the project will use. As a side-effect, it will create variables we might use later on.
+
+As for the actual invocation, let's say we created a `build` subdirectory. From there, we might say
+
+| Linux | Windows |
+| ----- | ------- |
+| `cmake ../` | `cmake -G "NMake Makefiles" ..\` |
+
+which will instruct cmake, to look for a CMakeLists.txt file one folder up from the working directory. The path provided may be relative or absolute. Makefiles will be generated in the working directory (the place from where we invoked CMake).
+
+Unfortunately, there is no way to tell CMake, which is the default generator we would like to use system wide, and the default on Windows is `Visual Studio 15 2017`. The generated MSBuild files are fairly verbose on the command-line and not ideal for learning.
+
+_If the extra typing troubles Windows users, bare with me, because ultimately we will leave behind the command-line as it is and use CMake from an IDE that supports it. CLI usage is solely for the sake of better understanding what's going on under the hood._
+
+### Result
+
+#### Ubuntu 16.04
+
+```
+$ cmake ../
+Hello, CMake!
+-- Configuring done
+-- Generating done
+-- Build files have been written to: ...
+```
+
+#### Windows 10
+
+```
+$ cmake -G "NMake Makefiles" ..\
+Hello, CMake!
+-- Configuring done
+-- Generating done
+-- Build files have been written to: ...
+```
