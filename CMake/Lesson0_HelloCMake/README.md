@@ -164,6 +164,24 @@ message("message to display" ...)
 
 The `message` command takes an arbitrary number of string to display, which it will concatenate without any delimiters. Without placing quotation marks around `${VERB}, ${NOUN}!`, the two became separate function arguments. The only time one needs quotation marks, is if he/she wishes to guard spaces from becoming white-spaces.
 
+If we wanted to concatenate two strings (fairly common when assembling file paths for eg.) we could do so with
+
+```CMake
+set(BASEPATH ./)
+set(MAIN "${BASEPATH}main.cpp")
+```
+
+or
+
+```CMake
+set(BASEPATH ./)
+set(MAIN ${BASEPATH}main.cpp)
+```
+
+If there are no spaces to guard, we are safe to omit the quotation marks.
+
+_NOTE: we will never refer to the working directory as such, there will be special variables that allow us to refrain from error-prone solutions, such as the above._
+
 ## Invoking CMake
 
 Up until this point, we have silently omited the actual invocation of CMake. To allow the reader to follow along and verify all that is shown here, one needs to put to use hopefully some skills already possessed.
