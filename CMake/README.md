@@ -48,4 +48,4 @@ yum install cmake
 
 #### Windows
 
-Fetch the latest stable installer from Kitwares site, which will guide you through the 'Next-Next-Finish' process. When prompted for adding CMake to the system or user PATH, you may want to approve for later convenience.
+Fetch the latest binary from [Kitwares site](https://cmake.org/download/). The MSI installer will guide you through the 'Next-Next-Finish' process of installing. When prompted for adding CMake to the system or user PATH, you may want to approve for later convenience. Alternatively, you may extract the ZIP file manually.
