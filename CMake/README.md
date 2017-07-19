@@ -9,7 +9,7 @@ This repository contains a step-by-step guide that wishes to guide you through u
 
 ### What is a build system?
 
-Even if the notion of a build system is not clear, you have most likely encountered one or another. A build system in essence is a tool that takes care of building a compiled language from source code to a binary with minimal effort from both the user (developer) and the machine executing the build process. Therefore one does need to care about the actual series of commands to issue to get the job done and what shortcuts can be taken.
+Even if the notion of a build system is not clear, you have most likely encountered one or another. A build system in essence is a tool that takes care of building a compiled language from source code to a binary with minimal effort from both the user (developer) and the machine executing the build process. Therefore one does need not care about the actual series of commands to issue to get the job done and what shortcuts can be taken.
 
 Minimal user effort manifests in authoring a 'makefile', some definition of all the inputs and outputs of the build process. Whether this is a text file written by the user or is the manifest of a 'click-click' GUI process depends on the build system at hand.
 
@@ -19,13 +19,13 @@ Since their earliest appearence, build systems have learned to become general pu
 
 ### What is a build system generator?
 
-A build system generator is tool that generates makefiles from yet another makefile. Sounds silly, but doing so one can gain portability, human readability or simply flexibility in doing more complex tasks.
+A build system generator is a tool that generates makefiles from yet another makefile. Sounds silly, but doing so one can gain portability, human readability or simply flexibility in doing more complex tasks.
 
 Modern software compilation and distribution may become arbitrarily complex, especially when one wishes to take into account the the varying nature of some of the widely available platforms one may wish to target. Because build systems are often native to a platform or are part of a development environment that again may be native to a platform, it is useful to create a 'meta-tool' that is independent of all execution environments and solely takes on the responsibility of creating makefiles of the desired flavor.
 
 ### CMake
 
-CMake is a set of tools that allows to define build processes in a human-readable script as well as enhancing to process with tasks commonly associated with programming, such as unit testing and packaging. The CMake scripts are then turned into makefiles of the users choice which act as execution engines of the CMake scripts.
+CMake is a set of tools that allows to define build processes in a human-readable script as well as enhancing the process with tasks commonly associated with programming, such as unit testing and packaging. The CMake scripts are then turned into makefiles of the users choice which act as execution engines of the CMake scripts.
 
 ## How?
 
