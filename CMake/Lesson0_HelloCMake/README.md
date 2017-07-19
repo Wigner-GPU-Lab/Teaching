@@ -1,7 +1,7 @@
 # Lesson 0 - Hello CMake
 
 
-As in all scripting and programming tutorials, we will begin with a simple, "Hello CMake" script. The script looks like the following:
+As in all scripting and programming tutorials, we will begin with a simple, "Hello CMake" script. While the market value of printing "Hello, World!" is fairly low, it provides an excuse to introduce many CMake concepts. The script looks like the following:
 
 ```CMake
 message("Hello, CMake!")
@@ -246,6 +246,8 @@ _If the extra typing troubles Windows users, bare with me, because ultimately we
 
 ### Result
 
+These are the results on the various platforms.
+
 #### Ubuntu 16.04
 
 ```
@@ -254,6 +256,8 @@ Hello, CMake!
 -- Configuring done
 -- Generating done
 -- Build files have been written to: ...
+$ cmake --build .
+$
 ```
 
 #### Windows 10
@@ -264,4 +268,50 @@ Hello, CMake!
 -- Configuring done
 -- Generating done
 -- Build files have been written to: ...
+$ cmake --build .
+$
+```
+
+The second `cmake --build .` invocation is asking cmake to call on the generated build system to execute the makefiles.
+
+Notice how nothing happens once we execute the generated makefiles. Of course, because there was no actual work placed in the CMake scripts. The `message` command only has meaning at configuration-time, hence the message we see __before__ we see the "Configuration done" message.
+
+## Debugging
+
+Even though the reader has been warned not to do too much in CMake other than getting a build going, experienced users will venture into doing fairly complex things. In such cases, and when one is still learning CMake, it is bound to happen that things go wrong withing the CMake scripts. There are three tools available for debugging.
+
+### message
+
+The `message` command is the CMake equivalent of the C-runtime `printf` function. It is useful when one suspect that the value of a variable is not quite what one wished it to be.
+
+### Documentation
+
+Speaking of `message`, this is the opportune moment to introduce the user to the [documentation](https://cmake.org/documentation/) which is a most useful resource for finding the capabilities of all commands available, as well as a [list of useful variables](https://cmake.org/Wiki/CMake_Useful_Variables). Elements of both resources will gradually be introduced throughout this tutorial.
+
+Taking a final, closer look at the docs of the [message command](https://cmake.org/cmake/help/latest/command/message.html?highlight=message), we will see that the actual definition is:
+
+```CMake
+message([<mode>] "message to display" ...)
+```
+
+Beside it accepting an arbitrary number of strings to display, there is also an optional first argument, regarding the seriousness of the message. The docs are self-explanatory, no further comments needed beside: __this is the single most useful command when learning CMake__.
+
+### Verbose makefiles
+
+When CMake configures without errors, the values of all variables seem fine, yet still compilation fails with compiler or linker errors, it might be useful to check on the actual tasks executed. __The proper way__ to do so __is not by looking at the generated makefiles__.
+
+Verbose makefiles print out every command executed by the build system. The means of obtaining a verbose invocation depends on the target generator.
+
+All such commands make use of the ability to pass parameters native to the build system through the cmake build driver. All arguments after the final double dash `--` will be passed onto the target build system.
+
+#### Ninja, Unix & NMake Makefiles
+
+```
+cmake --build . -- VERBOSE=1
+```
+
+#### MSBuild (Visual Studio generators)
+
+```
+cmake --build . -- /v:diag
 ```
