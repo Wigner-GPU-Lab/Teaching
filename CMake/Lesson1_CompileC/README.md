@@ -96,6 +96,8 @@ project(Lesson1 LANGUAGES C)
 add_executable(Lesson1 Source.c)
 ```
 
+_NOTE: the vigilant reader might have noticed, that we defined a function in a header file just a few lines after explaining how it violates the header/source distinction. This server the sole purpose of proving a point in just a moment._
+
 Now, if we build this project, this is what we'll see:
 
 ```
@@ -138,7 +140,84 @@ Part in the console output when we built our project. This is the step where the
 While everything above works, it is good practice to not rely on this feature inside a target. Header files belonging to a target should be explicitly mentioned:
 
 - to facilitate understanding the dependencies within your project,
-- so generators can create nicer IDE project files
+- so generators can create nicer IDE project files.
+
+Automatic dependency tracking is not an excuse to omit header file definitions inside the build scripts. Its purpose becomes apparent when one starts using libraries. Declaring your headers is as simple as declaring the sources were. CMake will know that files with header extensions are not to be compiled separately.
+
+```CMake
+add_executable(Lesson1 Header.h Source.c)
+```
+
+## The `target_include_directories` command
+
+Often one will see that even medium sized projects are organized in a similar manner:
+
+```
+my_project -+
+            |
+            inc -+
+            |    |
+            |    Header1.h
+            |    |
+            |    Header2.h
+            |    |
+            |    ...
+            |
+            src -+
+            |    |
+            |    Source1.c
+            |    |
+            |    Source2.c
+            |    |
+            |    ...
+            |
+            CMakeLists.txt
+            |
+            README.md
+```
+
+This might seem silly at first, but very soon one will start to have many types of files: headers, sources, documentation fragments, GPU shaders, GPGPU kernels, makefiles, etc. In such cases, including the headers from the sources might look like this:
+
+```C
+#include "../inc/Header1.h"
+```
+
+Not only is this ugly, but very error-prone to moving files around to have a meaningful layout on disk. One not only has to update the build scripts when files are moved, but also the source files.
+
+To overcome this, one may instruct CMake (and thus the compiler) to append the `inc` directory to the angle bracket include search paths. To do this, one might say:
+
+```CMake
+add_executable(example inc/Header1.h
+                       inc/Header2.h
+                       src/Source1.c
+                       src/Source2.c)
+
+target_include_directories(example PRIVATE inc)
+```
+
+Doing so, one is allowed to include them in code like this:
+
+```C
+#include <Header1.h>
+```
+
+>The `target_include_directories` command essentially controls the `-I` or `/I` switch of the compiler invocation.
+
+This (at least in my experience) is good practice and pays off to get used to. The `PRIVATE` argument is one of three possible choices as explained in the [commands docs](https://cmake.org/cmake/help/latest/command/target_include_directories.html?highlight=target_include_directories), which control the propagation of this property to downstreams, consumers of the target.
+
+- `PRIVATE` is used when consuming targets need not inherit the given property. In the case of an executable, this is safe to use, as nobody can "link" to an executable. In the case of libraries, this might be the case when an include need only be inside source files, but not headers. This is the case when a library depends on another but only, as an implementation detail. The dependants types do not show up in the interface of the library being compiled. Thus downstreams need not append the include directory to their own.
+- `PUBLILC` is used when consuming targets need to inherit the given property. If types manifest in the interface of the library, or definitions need to surface, downstreams must be able to locate the header files used, but not owned by the library.
+- `INTERFACE` is used on "meta-targets", libraries that do not produce actual code, but instead are just a collection of properties that consumers must know about. One prime example is OpenMP, which may very well be implemented inside the C-runtime library, so no extra linkage may be required, but compile flags are required to turn on OpenMP support. _(The `INTERFACE` argument is not exclusive to target_include_directories, more on this later.)_ In this case "linking" against an interface library populates corresponding properties of the target recorded on the interface llibrary recorded via `INTERFACE`. _NOTE: OpenMP detection ships with CMake and isn't defined by the user, thus not only is it an interface library, but also an `IMPORTED` library. More on imported targets later._
 
 ## The `add_library` command
 
+Let's say that we either want to build a library, either as an end product, or simply to factor out some of the code that will be reused by multiple executables.
+
+```CMake
+add_library(util Functions.h Functions.c)
+
+add_executable(use1 Use1.c)
+add_executable(use2 Use2.c)
+
+target_link_libraries(use1 PUBLIC util)
+```
