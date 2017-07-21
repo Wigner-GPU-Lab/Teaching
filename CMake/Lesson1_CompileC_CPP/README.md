@@ -1,4 +1,4 @@
-# Lesson 1 - Compile C
+# Lesson 1 - Compile C/C++
 
 
 Perhaps the sipmlest compilation process is to compile a single C file (though C++ isn't any more complicated). How is this done?
@@ -52,6 +52,11 @@ add_executable(MyExec ${SOURCE_FILES})
 ### Include files and directories
 
 In C/C++, the canonical spearation of function declarations and definitions is done via header and source files. One translation unit is the code span that one invocation of the compiler sees. In between translation units, the compiler "forgets" everything.
+
+This is all done to:
+
+- reduce compilation and link times,
+- create a clear separation of feature definition and realization.
 
 Let's say we have a one source and one header file in our program layed out the following way:
 
@@ -209,15 +214,37 @@ This (at least in my experience) is good practice and pays off to get used to. T
 - `PUBLILC` is used when consuming targets need to inherit the given property. If types manifest in the interface of the library, or definitions need to surface, downstreams must be able to locate the header files used, but not owned by the library.
 - `INTERFACE` is used on "meta-targets", libraries that do not produce actual code, but instead are just a collection of properties that consumers must know about. One prime example is OpenMP, which may very well be implemented inside the C-runtime library, so no extra linkage may be required, but compile flags are required to turn on OpenMP support. _(The `INTERFACE` argument is not exclusive to target_include_directories, more on this later.)_ In this case "linking" against an interface library populates corresponding properties of the target recorded on the interface llibrary recorded via `INTERFACE`. _NOTE: OpenMP detection ships with CMake and isn't defined by the user, thus not only is it an interface library, but also an `IMPORTED` library. More on imported targets later._
 
-## The `add_library` command
+## The `set_target_properties` command
 
-Let's say that we either want to build a library, either as an end product, or simply to factor out some of the code that will be reused by multiple executables.
+CMake has the notion of setting properties on targets which might trigger special behavior from both the build system and/or the compiler. One such important property is that of language versions.
+
+With the "recent" advent of C++, since 2011 the language has set course for a 3 year release schedule. C has also recieved new features, though less frequently. CMake understands both the notion of C and C++ standards and is able to enforce such requirements in a compiler agnostic manner.
+
+The available language standards in CMake 3.9 (at the time of writing):
+
+#### C
+
+- 90
+- 99
+- 11
+
+#### C++
+
+- 98
+- 11
+- 14
+- 17
+
+All compiler versions default to building in some language standard, but one may opt-in to selecting a specific feature. This is useful to overcome backward incompatible updates (very few in number) and also to guard from deprecation in newer standards. For fairly complete set of changes in the various versions of C/C++, [cppreference](http://en.cppreference.com/w/) is an invaluable source of info.
+
+Selecting a language standard for a target can be done by:
 
 ```CMake
-add_library(util Functions.h Functions.c)
+add_executable(app Source.c)
 
-add_executable(use1 Use1.c)
-add_executable(use2 Use2.c)
-
-target_link_libraries(use1 PUBLIC util)
+set_target_properties(app PROPERTIES
+                      C_STANDARD 11
+                      C_STANDARD_REQUIRED ON)
 ```
+
+The first `C_STANDARD` property specifies the version number, while the second `C_STANDARD_REQUIRED` property denotes a hard requirement. This is needed, because by default CMake allows for version fallback if the compiler at hand does not support the given version. _(I have no idea what the rataional might have been with this default behavior.)_ Similarily, C++ versions can be controlled via the `CXX_STANDARD` and `CXX_STANDARD_REQUIRED` properties.
