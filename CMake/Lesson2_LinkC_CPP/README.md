@@ -1,7 +1,7 @@
 # Lesson 2 - Link C/C++
 
 
-Compiling a standalone executable is nice, though more often than not isn't enough. One might wish to rely on external code compiled into a library and link to it. Buiding a library and linking against it comes by invoking two simple commands.
+Compiling a standalone executable is nice, though more often than not is not enough. One might wish to rely on external code compiled into a library and link to it. Buiding a library and linking against it comes by invoking two simple commands: `add_library` and `target_link_libraries`.
 
 ```CMake
 add_library(util Util.h Util.c)
@@ -24,7 +24,7 @@ add_library(util inc/Functions.h
 target_include_directories(util PUBLIC inc)
 ```
 
-The `add_library` command instructs CMake to emit a library of the defult type. Taking a look at [the docs](https://cmake.org/cmake/help/latest/command/add_library.html?highlight=add_library), we can see that there is an optional param which may override the default library type controlled via BUILD_SHARED_LIBS boolean variable.
+The `add_library` command instructs CMake to emit a library of the defult type. Taking a look at [the docs](https://cmake.org/cmake/help/latest/command/add_library.html?highlight=add_library), we can see that there is an optional param which may override the default library type controlled via `BUILD_SHARED_LIBS` boolean variable.
 
 _NOTE: The actual name of the library on disk is OS dependant. A shared library on *nix-like OSes will be `libname.so` and `name.dll` on Windows, whereas static libraries are named `libname.a` and `name.lib` respectively._
 
@@ -37,6 +37,8 @@ The available library types are:
 
 ## The `target_link_libraries` command
 
+When a library target has been declared, one can link to it using the following set of commands:
+
 ```CMake
 add_library(util util/inc/Functions.h
                  util/src/Functions.c)
@@ -45,5 +47,12 @@ target_include_directories(util PUBLIC inc)
 
 add_executable(use use/src/Use.c)
 
-target_link_libraries(use PUBLIC util)
+target_link_libraries(use PRIVATE util)
 ```
+
+There are multiple things to note here:
+
+- Nowhere did we specify whether the library that we link to is a static or dynamic. CMake will take care of linkage in both cases.
+  - If the library is compiled to be dynamic, by default it will be placed in the same directory where executables are placed, so they can find them conveniently by launching them from `./`
+- We did not have to redeclare the include directory of `util` on the target `use`. That is because we declared the `inc` directory to be `PUBLIC`, thus it is propagated to all consumers of `util`.
+  - However, the use of `util` itself is totally a private matter of the executable, no further propagation of this linkage information is required. _NOTE: placing `PUBLIC` instead of `PRIVATE` wouldn't hurt either._
