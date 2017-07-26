@@ -1,7 +1,7 @@
 # Lesson 1 - Compile C/C++
 
 
-Perhaps the sipmlest compilation process is to compile a single C file (though C++ isn't any more complicated). How is this done?
+Perhaps the simplest compilation process is to compile a single C file (though C++ isn't any more complicated). How is this done?
 
 ```CMake
 add_executable(Lesson1 Main.c)
@@ -51,7 +51,7 @@ add_executable(MyExec ${SOURCE_FILES})
 
 ### Include files and directories
 
-In C/C++, the canonical spearation of function declarations and definitions is done via header and source files. One translation unit is the code span that one invocation of the compiler sees. In between translation units, the compiler "forgets" everything.
+In C/C++, the canonical separation of function declarations and definitions is done via header and source files. One translation unit is the code span that one invocation of the compiler sees. In between translation units, the compiler "forgets" everything.
 
 This is all done to:
 
@@ -101,7 +101,7 @@ project(Lesson1 LANGUAGES C)
 add_executable(Lesson1 Source.c)
 ```
 
-_NOTE: the vigilant reader might have noticed, that we defined a function in a header file just a few lines after explaining how it violates the header/source distinction. This server the sole purpose of proving a point in just a moment._
+_NOTE: the vigilant reader might have noticed, that we defined a function in a header file just a few lines after explaining how it violates the header/source distinction. This serves the sole purpose of proving a point in just a moment._
 
 Now, if we build this project, this is what we'll see:
 
@@ -138,7 +138,7 @@ CMake has an understanding of the C/C++ compilation model and generates makefile
 
 >Scanning dependencies of target Lesson1
 
-Part in the console output when we built our project. This is the step where the dependency detection part of the generated makefiles are processed. The compiler is invoked with flags that trigger the generation of a database file holding all `#include` files. In turn, timestamps of these files are also checked to decide, whether our `Source.c` needs recompilation.
+part in the console output when we built our project. This is the step where the dependency detection part of the generated makefiles are processed. The compiler is invoked with flags that trigger the generation of a database file holding all `#include` files. In turn, timestamps of these files are also checked to decide, whether our `Source.c` needs recompilation.
 
 ### Explicit intra-target dependencies
 
@@ -212,7 +212,7 @@ This (at least in my experience) is good practice and pays off to get used to. T
 
 - `PRIVATE` is used when consuming targets need not inherit the given property. In the case of an executable, this is safe to use, as nobody can "link" to an executable. In the case of libraries, this might be the case when an include need only be inside source files, but not headers. This is the case when a library depends on another but only, as an implementation detail. The dependants types do not show up in the interface of the library being compiled. Thus downstreams need not append the include directory to their own.
 - `PUBLILC` is used when consuming targets need to inherit the given property. If types manifest in the interface of the library, or definitions need to surface, downstreams must be able to locate the header files used, but not owned by the library.
-- `INTERFACE` is used on "meta-targets", libraries that do not produce actual code, but instead are just a collection of properties that consumers must know about. One prime example is OpenMP, which may very well be implemented inside the C-runtime library, so no extra linkage may be required, but compile flags are required to turn on OpenMP support. _(The `INTERFACE` argument is not exclusive to target_include_directories, more on this later.)_ In this case "linking" against an interface library populates corresponding properties of the target recorded on the interface llibrary recorded via `INTERFACE`. _NOTE: OpenMP detection ships with CMake and isn't defined by the user, thus not only is it an interface library, but also an `IMPORTED` library. More on imported targets later._
+- `INTERFACE` is used on "meta-targets", libraries that do not produce actual code, but instead are just a collection of properties that consumers must know about. One prime example is OpenMP, which may very well be implemented inside the C-runtime library, so no extra linkage may be required, but compile flags are required to turn on OpenMP support. _(The `INTERFACE` argument is not exclusive to target_include_directories, more on this later.)_ In this case "linking" against an interface library populates corresponding properties of the target recorded on the interface library recorded via `INTERFACE`. _NOTE: OpenMP detection ships with CMake and isn't defined by the user, thus not only is it an interface library, but also an `IMPORTED` library. More on imported targets later._
 
 ## The `set_target_properties` command
 
@@ -247,4 +247,4 @@ set_target_properties(app PROPERTIES
                       C_STANDARD_REQUIRED ON)
 ```
 
-The first `C_STANDARD` property specifies the version number, while the second `C_STANDARD_REQUIRED` property denotes a hard requirement. This is needed, because by default CMake allows for version fallback if the compiler at hand does not support the given version. _(I have no idea what the rataional might have been with this default behavior.)_ Similarily, C++ versions can be controlled via the `CXX_STANDARD` and `CXX_STANDARD_REQUIRED` properties.
+The first `C_STANDARD` property specifies the version number, while the second `C_STANDARD_REQUIRED` property denotes a hard requirement. This is needed, because by default CMake allows for version fallback if the compiler at hand does not support the given version. _(I have no idea what the rational might have been with this default behavior.)_ Similarily, C++ versions can be controlled via the `CXX_STANDARD` and `CXX_STANDARD_REQUIRED` properties.
