@@ -1,7 +1,7 @@
 # Lesson 3 - Dependencies
 
 
-One of the strengths of CMake is its ability to find dependencies with minimal user effort (based on upstream support). There are two catgories of dependecies, both with their preferred way of detection:
+One of the strengths of CMake is its ability to find dependencies with minimal user effort (based on upstream support). There are two categories of dependencies, both with their preferred way of detection:
 
 - Upstream is a binary or is built using another technology
 - Upstream was built using CMake
@@ -14,7 +14,7 @@ There is also a hidden third option:
 
 Find module scripts target upstreams that are not CMake aware, meaning that they either ship as a binary or are built using other build systems. The layout of such libraries/tools are too numerous to count, not to mention their install locations may be unique, or worse: user defined. These scripts try looking for libraries in typical install locations on the OS at hand. Some libraries may create environmental variables when installed properly, which may guide the find module scripts. Guessing user defined install locations in advance requires otherwordly support. Depending on such libraries will need minimal user interaction.
 
-The scripts that detect such dependencies are called Find module scripts and are named by convention as `FindName.cmake`, where "Name" is the name of the dependency, for eg. `FindMPI.cmake`. Authoring such scripts is outside the scope of this lesson, but will be explained in a later lesson. For the time being, we'll restrit ourselves to browsing the comments section of these scripts.
+The scripts that detect such dependencies are called Find module scripts and are named by convention as `FindName.cmake`, where "Name" is the name of the dependency, for eg. `FindMPI.cmake`. Authoring such scripts is outside the scope of this lesson, but will be explained in a later lesson. For the time being, we'll restrict ourselves to browsing the comments section of these scripts.
 
 CMake (3.9) comes with 148 pre-installed find module scripts. _(On Windows they are located under `<install root>\share\cmake-3.9\Modules` and on Ubuntu under `/etc/share/usr/share/cmake-3.5/Modules/`)_ You might want to scan through the list to get a feeling of what comes bundled with CMake. Let's take a look at FindMPI.cmake, shall we?
 
@@ -52,7 +52,7 @@ CMake (3.9) comes with 148 pre-installed find module scripts. _(On Windows they 
 
 Up until this point, the comments section demonstrates, how to depend on MPI using the "old school" way. The comments are fairly straightforward. Once the scripts are run, they set certain variables which we may use in our build scripts.
 
-How do we run these find module scripts? We use the `find_package` command likt this:
+How do we run these find module scripts? We use the `find_package` command like this:
 
 ```CMake
 find_package(MPI REQUIRED)
@@ -92,7 +92,7 @@ add_executable(app Main.c)
 target_link_libraries(app PRIVATE MPI::MPI_C)
 ```
 
-Wow! That is much simpler. All the properties we set manually earlier are now all inherited from the imported target. The first part of imported target, before `::` is always the name of the module at hand. The second part are "sub-modules", parts of the module than can stand by themselves. In the case of MPI, an implementation may omit fortran bindings for eg., but that doesn't mean we couldn't rely on the C bindings.
+Wow! That is much simpler. All the properties we set manually earlier are now all inherited from the imported target. The first part of imported target, before `::` is always the name of the module at hand. The second part are "sub-modules", parts of the module than can stand by themselves. In the case of MPI, an implementation may omit Fortran bindings for eg., but that doesn't mean we couldn't rely on the C bindings.
 
 Another prime example is Boost with many subprojects which may be consumed seperately using `Boost::filesystem` for eg. In this case, one need not detect all subprojects (they might even be absent).
 
@@ -167,7 +167,7 @@ cmake -DCMAKE_INSTALL_PREFIX=~/opt/clMath/clFFT/2.12.2 ../src
 cmake --build . --target install
 ```
 
-This will fetch the latest (at the time of writing) tagged version of clFFT, build it and install it under the users home directory. _(NOTE: `CMAKE_INSTALL_PREFIX` is the canonical variable that controlls the target location of the `install` target. More on magic params like this later.)_
+This will fetch the latest (at the time of writing) tagged version of clFFT, build it and install it under the user's home directory. _(NOTE: `CMAKE_INSTALL_PREFIX` is the canonical variable that controlls the target location of the `install` target. More on magic params like this later.)_
 
 So where are the magic package config scripts? After taking a look at the install we'll find a folder:
 
