@@ -14,9 +14,9 @@ There is also a hidden third option:
 
 Find module scripts target upstreams that are not CMake aware, meaning that they either ship as a binary or are built using other build systems. The layout of such libraries/tools are too numerous to count, not to mention their install locations may be unique, or worse: user defined. These scripts try looking for libraries in typical install locations on the OS at hand. Some libraries may create environmental variables when installed properly, which may guide the find module scripts. Guessing user defined install locations in advance requires otherwordly support. Depending on such libraries will need minimal user interaction.
 
-The scripts that detect such dependencies are called Find module scripts and are named by convention as `FindName.cmake`, where "Name" is the name of the dependency, for eg. `FindMPI.cmake`. Authoring such scripts is outside the scope of this lesson, but will be explained in a later lesson. For the time being, we'll restrict ourselves to browsing the comments section of these scripts.
+The scripts that detect such dependencies are called Find Module scripts and are named by convention as `FindName.cmake`, where "Name" is the name of the dependency, for eg. `FindMPI.cmake`. Authoring such scripts is outside the scope of this lesson, but will be explained in a later lesson. For the time being, we'll restrict ourselves to browsing the comments section of these scripts.
 
-CMake (3.9) comes with 148 pre-installed find module scripts. _(On Windows they are located under `<install root>\share\cmake-3.9\Modules` and on Ubuntu under `/etc/share/usr/share/cmake-3.5/Modules/`)_ You might want to scan through the list to get a feeling of what comes bundled with CMake. Let's take a look at FindMPI.cmake, shall we?
+CMake (3.9) comes with 148 pre-installed find module scripts. _(On Windows they are located under `<install root>\share\cmake-3.9\Modules` and on Ubuntu 16.04 under `/etc/share/usr/share/cmake-3.5/Modules/`)_ You might want to scan through the list to get a feeling of what comes bundled with CMake. Let's take a look at FindMPI.cmake, shall we?
 
 ```rst
 # FindMPI
@@ -183,6 +183,8 @@ clFFTTargets-debug.cmake
 
 It is sufficient to know that these are the files CMake will be looking for. However, CMake knows nothing about where a user will place installs. In order to tell CMake where package config scripts reside on disk, we must register this folder in CMakes [package registry](https://cmake.org/cmake/help/latest/manual/cmake-packages.7.html?highlight=package#package-registry).
 
+Some well written CMake scripts may even register the installations by themselves, though generally this task remains as an exercise for the user. (More on this later in the package authoring lesson.)
+
 #### Ubuntu
 
 On *nix derivates, CMake will inspect the folder `~/.cmake/packages`. In it, it will look for folders with identical name as the package and inside it will look for plain text files of arbitrary names which contain the path to the package config scripts.
@@ -194,7 +196,11 @@ mkdir ~/.cmake/packages/clFFT
 echo ~/opt/clMath/clFFT/2.12.2/CMake > ~/.cmake/packages/clFFT/2.12.2
 ```
 
-The name of the file need not be the version of the package, but anything that holds information to you.
+The name of the file need not be the version of the package, but anything that holds information to you. To list all the installed packages, just recursively list the packages folder.
+
+```
+ls -R ~/.cmake/packages
+```
 
 #### Windows
 
@@ -205,6 +211,14 @@ New-Item HKCU:\SOFTWARE\Kitware\CMake\Packages
 New-Item HKCU:\SOFTWARE\Kitware\CMake\Packages\clFFT
 New-ItemProperty -Path HKCU:\SOFTWARE\Kitware\CMake\Packages\clFFT -Name 2.12.2 -Value 'C:\Program Files\clMath\clFFT\2.12.2\CMake'
 ```
+
+For those unfamiliar with Powershell, `HKCU:\` is a PSDrive (Powershell Drive, a traversible virtual drive for tree-like structures), for the system registry; more precisely it is the users own registry. It abbreviates _Hive Key Current User_. Again, the name of the property need not be the same as the version string, just something that holds meaning preferably. To list all the installed packages, just list the packages registry folder.
+
+```Powershell
+Get-ChildItem HKCU:\SOFTWARE\Kitware\CMake\Packages
+```
+
+_NOTE: on Windows, packages can be installed system-wide, for all users when registered into `HKLM:\`, the local machines registry as opposed to the users registry. This requires administrator priviliges._
 
 ### Using packages
 
@@ -219,3 +233,25 @@ target_link_libraries(app PRIVATE clFFT)
 ```
 
 Note that again, we didn't have to specify any include directories, because clFFT advertises this information to downstreams.
+
+### Non-CMake upstreams with Package Config
+
+The distinction of an upstream providing CMake Package Config files is notable because it requires code generation tools which assemble the config files, which is a considerable amount of effort. Perhaps the most notable such framework is the set of Qt5 libraries.
+
+Qt5 when installed not only installs Package Config scripts along with the installation _(although in 5.9 it still omits registering them in the appropriate package registry)_, but Qt developers have cooked some tooling invocation natively into CMake.
+
+Qt5 uses a few extensions to the C++ language guided by a set of tools that do additional "compilation" steps upon building, resulting in extra source files which need compiling and linking to the target. The most basic such tool takes care of the MOC (Meta Object Creation) step. The `moc.exe` tool inspects the source files, looks for a magic define, and if it's found, it emits an extra source file which the C++ compiler also needs to compile and link.
+
+This process is totally automated without just about any user interaction.
+
+```CMake
+find_package(Qt5 REQUIRED COMPONENTS Core)
+
+add_executable(App Main.cpp)
+
+target_link_libraries(App PRIVATE Qt5::Core)
+
+set_target_properties(App PROPERTIES AUTOMOC ON)
+```
+
+Qt5 contains a few more such extra compilation steps, again guided by native CMake support, but explaining all of them remain outside the scope of this lesson.
