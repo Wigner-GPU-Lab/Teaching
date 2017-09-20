@@ -6,8 +6,9 @@ set (Target_Name NBody)
 # Always include current directory for all compile commands 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-# Find Qt5 installation
-#find_package (Qt5 5.7 CONFIG REQUIRED Core Gui OpenGL)
+# Generate the configuration file for application to locate shader and kernel files
+configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/include/NBody-Config.in.hpp"
+                "${CMAKE_CURRENT_BINARY_DIR}/include/NBody-Config.hpp")
 
 # Specify source and header files
 set (Sources source/Main.cpp
@@ -15,7 +16,8 @@ set (Sources source/Main.cpp
              source/InteropWindow.cpp)
 
 set (Headers include/InteropWindow.hpp
-             include/NBody.hpp)
+             include/NBody.hpp
+			 ${CMAKE_CURRENT_BINARY_DIR}/include/NBody-Config.hpp)
 
 set (Shaders shader/Vertex.glsl
              shader/Fragment.glsl)
@@ -26,11 +28,13 @@ set (Kernels kernel/Kernels.cl)
 add_executable(${Target_Name} ${Sources} ${Headers} ${Shaders} ${Kernels})
 
 # Target include directories
-target_include_directories (${Target_Name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories (${Target_Name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+                                                  ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 # Target link directives
 target_link_libraries(${Target_Name} PUBLIC Qt5::Core Qt5::Gui Qt5::OpenGL Qt5::WinMain
-                                            OpenCL::OpenCL)
+                                            OpenCL::OpenCL
+											OpenGL::GL)
 
 # Automatically invoke Qt tools on source files
 set_target_properties(${Target_Name} PROPERTIES CXX_STANDARD 11

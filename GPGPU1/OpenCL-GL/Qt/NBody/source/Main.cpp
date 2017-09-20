@@ -27,13 +27,13 @@ int main(int argc, char *argv[])
     my_surfaceformat.setStencilBufferSize(8);
     my_surfaceformat.setStereo(false);
 
-    QGripper my_gripper;
-    my_gripper.setDeviceType(CL_DEVICE_TYPE_GPU);
-    my_gripper.setFormat(my_surfaceformat);
-    my_gripper.setVisibility(QWindow::Maximized);
+	NBody nbody;
+	nbody.setDeviceType(CL_DEVICE_TYPE_GPU);
+	nbody.setFormat(my_surfaceformat);
+	nbody.setVisibility(QWindow::Maximized);
     //my_gripper.setMaxFPS(10);
     //my_gripper.setMaxIPS(10);
-    my_gripper.setAnimating(true);
+	nbody.setAnimating(true);
 
     return app.exec();
 }

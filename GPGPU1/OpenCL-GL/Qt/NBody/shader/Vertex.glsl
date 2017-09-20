@@ -12,8 +12,7 @@ layout(location = COLOR) in float in_Color;
 
 out block
 {
-	vec4 Position;
-	vec4 Color;
+	float Color;
 } VS_Out;
 
 uniform mat4 mat_MVP;
@@ -23,7 +22,6 @@ void main()
 {
 	gl_Position = mat_MVP * vec4(in_Position, 1.0);
 
-	VS_Out.Position = mat_M * vec4(in_Position, 1.0);
-	VS_Out.Color = vec4(in_Color, 1.0, 1.0, 1.0);
+	VS_Out.Color = in_Color;
 }
 

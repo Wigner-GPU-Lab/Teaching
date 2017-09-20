@@ -156,8 +156,16 @@ bool InteropWindow::lookForDeviceType(cl::Platform& plat_in, cl_bitfield devtype
     CL_err = plat_in.getDevices(devtype_in, &possible_devices); checkCLerror();
     std::remove_if(possible_devices.begin(), possible_devices.end(), [&properties](const cl::Device& device)
     {
-        cl_int err;
-        cl::Context(device, properties.data(), nullptr, nullptr, &err);
+        cl_int err = CL_SUCCESS;
+        try
+        {
+            cl::Context(device, properties.data(), nullptr, nullptr);
+        }
+        catch (cl::Error e)
+        {
+            err = e.err();
+        }
+        
         return err != CL_SUCCESS;
     });
     //cl::Context possible_context(possible_devices, properties.data(), nullptr, nullptr, &CL_err); checkCLerror();
@@ -166,8 +174,12 @@ bool InteropWindow::lookForDeviceType(cl::Platform& plat_in, cl_bitfield devtype
     {
         qDebug("InteropWindow: Interop capable device(s) found");
         m_cl_platform = plat_in;
+
+        // Multi-device init
         //m_cl_devices = possible_devices;
         //m_cl_context = possible_context;
+
+        // Single-device init
         m_cl_devices.push_back(possible_devices.at(0));
         m_cl_context = cl::Context(possible_devices.at(0), properties.data(), nullptr, nullptr, &CL_err); checkCLerror();
         for (auto& dev : m_cl_devices)

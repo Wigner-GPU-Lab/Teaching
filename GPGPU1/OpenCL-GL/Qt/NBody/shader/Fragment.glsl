@@ -9,16 +9,11 @@
 
 in block
 {
-	vec4 Position;
-	vec4 Color;
+	float Color;
 } FS_In;
 
 void main()
 {	
-	float R = 0.01f * FS_In.Position.z;
-	float G = (FS_In.Position.z < 0.f) ? FS_In.Position.z / 100.0f + 0.7f : -FS_In.Position.z / 100.f + 0.7f;
-	float B = -0.01f * FS_In.Position.z;
-
-	gl_FragColor = vec4(R,G,B,1.0f);
+    gl_FragColor = vec4(1.0f,FS_In.Color,1.0f,1.0f);
 }
 
