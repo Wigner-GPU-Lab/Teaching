@@ -85,6 +85,7 @@ private:
 	cl::Kernel step_kernel;                 // Kernel
 
 	cl::CommandQueue compute_queue;         // CommandQueue
+    bool cl_khr_gl_event_supported;
 
 	// OpenGL related variables
 	std::unique_ptr<QOpenGLShader> vs, fs;

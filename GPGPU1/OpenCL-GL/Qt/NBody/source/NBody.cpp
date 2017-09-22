@@ -155,6 +155,8 @@ void NBody::initializeCL()
 		compile_options << "-D real4=" << "float4 ";
 	}
 
+    cl_khr_gl_event_supported = CLdevices().at(dev_id).getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_gl_event", 0) != std::string::npos;
+
 	qDebug("NBody: Building kernel");
 	qDebug((std::string("NBody: Build options are:") + compile_options.str()).c_str());
 	cl::Program prog{ CLcontext(), kernel_string };
@@ -217,7 +219,10 @@ void NBody::updateScene()
 	compute_queue.enqueueReleaseGLObjects(&interop_resources, nullptr, &acquire_release[1]);
     
     // Wait for all OpenCL commands to finish
-    compute_queue.finish();
+    if (!cl_khr_gl_event_supported)
+        compute_queue.finish();
+    else
+        acquire_release[1].wait();
     
     // Swap front and back buffer handles
     std::swap(vaos[Front], vaos[Back]);
@@ -240,20 +245,20 @@ void NBody::render()
     if(!sp->bind()) qWarning("QGripper: Failed to bind shaderprogram");
     vaos[Back]->bind(); checkGLerror();
 
-    //sp->enableAttributeArray(0);  checkGLerror();
-    //sp->enableAttributeArray(1);  checkGLerror();
-    //sp->setAttributeArray(0, GL_FLOAT, (GLvoid *)(NULL), 3, sizeof(real4));                     checkGLerror();
-    //sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 3 * sizeof(real)), 1, sizeof(real4));  checkGLerror();
-
     glFuncs->glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(particle_count)); checkGLerror();
 
     vaos[Back]->release(); checkGLerror();
     sp->release(); checkGLerror();
 
     // Wait for all drawing commands to finish
-    glFuncs->glFinish();
-    checkGLerror();
-
+    if (!cl_khr_gl_event_supported)
+    {
+        glFuncs->glFinish(); checkGLerror();
+    }
+    else
+    {
+        glFuncs->glFlush(); checkGLerror();
+    }
     imageDrawn = true;
 }
 
@@ -367,7 +372,6 @@ void NBody::setMatrices()
     const float max_range = std::max({ x_abs_range,
                                        y_abs_range ,
                                        z_abs_range });
-    //dist = max_range / std::tan(fov); // tan(alfa) = opposite / adjacent
 
     // Set camera to view the origo from the z-axis with up along the y-axis
     // and distance so the entire sim space is visible with given field-of-view

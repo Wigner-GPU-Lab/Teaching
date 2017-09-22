@@ -17,8 +17,8 @@ int main(int argc, char *argv[])
     my_surfaceformat.setRenderableType(QSurfaceFormat::RenderableType::OpenGL);
     my_surfaceformat.setProfile(QSurfaceFormat::OpenGLContextProfile::CoreProfile);
     my_surfaceformat.setSwapBehavior(QSurfaceFormat::SwapBehavior::DoubleBuffer);
-    my_surfaceformat.setMajorVersion(4);
-    my_surfaceformat.setMinorVersion(2);
+    my_surfaceformat.setMajorVersion(3);
+    my_surfaceformat.setMinorVersion(3);
     my_surfaceformat.setRedBufferSize(8);
     my_surfaceformat.setGreenBufferSize(8);
     my_surfaceformat.setBlueBufferSize(8);

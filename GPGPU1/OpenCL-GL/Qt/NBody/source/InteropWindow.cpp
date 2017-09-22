@@ -275,11 +275,11 @@ void InteropWindow::render_helper()
         
         // Restart the limiter once the drawing is done
 #ifdef QTIMER
-        m_act_FPS = 1000/m_FPS_limiter.restart();
+        m_act_FPS = static_cast<int>(1000./m_FPS_limiter.restart());
 #endif
 #ifdef STDTIMER
         now = std::chrono::high_resolution_clock::now();
-        m_act_FPS = 1000/std::chrono::duration_cast<std::chrono::milliseconds>(now - m_FPS_limiter).count();
+        m_act_FPS = static_cast<int>(1000./std::chrono::duration_cast<std::chrono::milliseconds>(now - m_FPS_limiter).count());
         m_FPS_limiter = now;
 #endif
     }
@@ -307,11 +307,11 @@ void InteropWindow::updateScene_helper()
 
         // Restart the limiter only once the update is done
 #ifdef QTIMER
-        m_act_IPS = 1000/m_IPS_limiter.restart();
+        m_act_IPS = static_cast<int>(1000./m_IPS_limiter.restart());
 #endif
 #ifdef STDTIMER
         now = std::chrono::high_resolution_clock::now();
-        m_act_IPS = 1000/std::chrono::duration_cast<std::chrono::milliseconds>(now - m_IPS_limiter).count();
+        m_act_IPS = static_cast<int>(1000./std::chrono::duration_cast<std::chrono::milliseconds>(now - m_IPS_limiter).count());
         m_IPS_limiter = now;
 #endif   
     }
