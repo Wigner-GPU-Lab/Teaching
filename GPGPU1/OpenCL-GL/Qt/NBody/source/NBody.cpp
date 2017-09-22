@@ -3,13 +3,18 @@
 
 NBody::NBody(QWindow* parent)
     : InteropWindow(parent)
-	, particle_count(4096u)
+	, particle_count(8192u)
 	, x_abs_range(192.f)
 	, y_abs_range(128.f)
 	, z_abs_range(32.f)
 	, mass_min(100.f)
-	, mass_max(1000.f)
+	, mass_max(500.f)
 	, dev_id(0)
+    , dist(3 * std::max({ x_abs_range,
+                          y_abs_range ,
+                          z_abs_range }))
+    , phi(0)
+    , theta(0)
     , imageDrawn(false)
     , needMatrixReset(true)
 {
@@ -32,7 +37,7 @@ void NBody::initializeGL()
 	// Initialize frame buffer
 	glFuncs->glViewport(0, 0, width(), height());   checkGLerror();
 	glFuncs->glClearColor(0.0, 0.0, 0.0, 1.0);      checkGLerror();
-	glFuncs->glEnable(GL_DEPTH_TEST);               checkGLerror();
+	glFuncs->glDisable(GL_DEPTH_TEST);               checkGLerror();
 	glFuncs->glDisable(GL_CULL_FACE);               checkGLerror();
 
 	// Initialize simulation data
@@ -72,14 +77,6 @@ void NBody::initializeGL()
 	if (!sp->link()) qWarning("%s", sp->log().data());
 	qDebug("NBody: Done linking shaders");
 
-    // Setup shader attributes
-    //if (!sp->bind()) qWarning("QGripper: Failed to bind shaderprogram");
-    //sp->enableAttributeArray(0);  checkGLerror();
-    //sp->enableAttributeArray(1);  checkGLerror();
-    //sp->setAttributeArray(0, GL_FLOAT, (GLvoid *)(NULL), 3, sizeof(real4));                     checkGLerror();
-    //sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 3 * sizeof(real)), 1, sizeof(real4));  checkGLerror();
-    //sp->release(); checkGLerror();
-
 	// Init device memory
 	qDebug("NBody: Initializing OpenGL buffers...");
 
@@ -104,6 +101,14 @@ void NBody::initializeGL()
 		vao->bind();
         {
             if (!vbo->bind()) qWarning("QGripper: Could not bind VBO");
+
+            // Setup shader attributes (can only be done when a VBO is bound, VAO does not store shader state
+            if (!sp->bind()) qWarning("QGripper: Failed to bind shaderprogram");
+            sp->enableAttributeArray(0);  checkGLerror();
+            sp->enableAttributeArray(1);  checkGLerror();
+            sp->setAttributeArray(0, GL_FLOAT, (GLvoid *)(NULL), 3, sizeof(real4));                     checkGLerror();
+            sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 3 * sizeof(real)), 1, sizeof(real4));  checkGLerror();
+            sp->release(); checkGLerror();
         }
 		vao->release();
 
@@ -198,8 +203,8 @@ void NBody::initializeCL()
 // Override unimplemented InteropWindow function
 void NBody::updateScene()
 {
-	//compute_queue.enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire_release[0]);
-    /*
+	compute_queue.enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire_release[0]);
+    
 	auto compute_event = kernel_functor{ step_kernel }(cl::EnqueueArgs{ compute_queue, gws },
 		                                               posBuffs[Front],
 		                                               posBuffs[Back],
@@ -208,17 +213,17 @@ void NBody::updateScene()
 		                                               (cl_uint)particle_count,
 		                                               (real)0.005,
 		                                               (real)1.0);
-    */
-	//compute_queue.enqueueReleaseGLObjects(&interop_resources, nullptr, &acquire_release[1]);
+    
+	compute_queue.enqueueReleaseGLObjects(&interop_resources, nullptr, &acquire_release[1]);
     
     // Wait for all OpenCL commands to finish
     compute_queue.finish();
-    /*
+    
     // Swap front and back buffer handles
     std::swap(vaos[Front], vaos[Back]);
     std::swap(posBuffs[Front], posBuffs[Back]);
     std::swap(velBuffs[Front], velBuffs[Back]);
-    */
+    
     imageDrawn = false;
 }
 
@@ -229,16 +234,16 @@ void NBody::render()
     if(needMatrixReset) setMatrices();
 
     // Clear Frame Buffer and Z-Buffer
-    glFuncs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); checkGLerror();
+    glFuncs->glClear(GL_COLOR_BUFFER_BIT); checkGLerror();
 
     // Draw
     if(!sp->bind()) qWarning("QGripper: Failed to bind shaderprogram");
     vaos[Back]->bind(); checkGLerror();
 
-    sp->enableAttributeArray(0);  checkGLerror();
-    sp->enableAttributeArray(1);  checkGLerror();
-    sp->setAttributeArray(0, GL_FLOAT, (GLvoid *)(NULL), 3, sizeof(real4));                     checkGLerror();
-    sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 3 * sizeof(real)), 1, sizeof(real4));  checkGLerror();
+    //sp->enableAttributeArray(0);  checkGLerror();
+    //sp->enableAttributeArray(1);  checkGLerror();
+    //sp->setAttributeArray(0, GL_FLOAT, (GLvoid *)(NULL), 3, sizeof(real4));                     checkGLerror();
+    //sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 3 * sizeof(real)), 1, sizeof(real4));  checkGLerror();
 
     glFuncs->glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(particle_count)); checkGLerror();
 
@@ -293,7 +298,10 @@ bool NBody::event(QEvent *event_in)
     case QEvent::MouseMove:
         mouse_event = static_cast<QMouseEvent*>(event_in);
 
-        if((mouse_event->buttons() & Qt::MouseButton::RightButton) && (mousePos != mouse_event->pos())) mouseDrag(mouse_event);
+        if((mouse_event->buttons() & Qt::MouseButton::RightButton) && // If RMB is pressed AND
+           (mousePos != mouse_event->pos()))                          // Mouse has moved 
+            mouseDrag(mouse_event);
+
         mousePos = mouse_event->pos();
         return true;
 
@@ -318,8 +326,8 @@ bool NBody::event(QEvent *event_in)
 // Input handler function
 void NBody::mouseDrag(QMouseEvent* event_in)
 {
-    phi += (event_in->x() - mousePos.x()) * 0.25f;
-	theta += (event_in->y() - mousePos.y()) * -0.25f;
+    phi += (event_in->x() - mousePos.x());
+	theta += (event_in->y() - mousePos.y());
     
     needMatrixReset = true;
     
@@ -330,7 +338,7 @@ void NBody::mouseDrag(QMouseEvent* event_in)
 void NBody::mouseWheel(QWheelEvent* event_in)
 {
     QPoint numPixels = event_in->pixelDelta();
-    QPoint numDegrees = event_in->angleDelta() / 8;
+    QPoint numDegrees = event_in->angleDelta() / 4;
 
     if (!numPixels.isNull())
     {
@@ -359,17 +367,17 @@ void NBody::setMatrices()
     const float max_range = std::max({ x_abs_range,
                                        y_abs_range ,
                                        z_abs_range });
-    dist = max_range / std::tan(fov); // tan(alfa) = opposite / adjacent
+    //dist = max_range / std::tan(fov); // tan(alfa) = opposite / adjacent
 
     // Set camera to view the origo from the z-axis with up along the y-axis
     // and distance so the entire sim space is visible with given field-of-view
     QVector3D vecTarget{ 0, 0, 0 };
     QVector3D vecUp{ 0, 1, 0 };
-    QVector3D vecEye = vecTarget + QVector3D{ 0, 0, max_range + dist };
+    QVector3D vecEye = vecTarget + QVector3D{ 0, 0, dist };
 
     QMatrix4x4 matWorld; // Identity
-    matWorld.rotate(theta, { 0, 0, 1 }); // theta rotates around z-axis
-    matWorld.rotate(phi,   { 0, 1, 0 }); // theta rotates around x-axis
+    matWorld.rotate(theta, { 2, 0, 0 }); // theta rotates around z-axis
+    matWorld.rotate(phi,   { 0, 0, 2 }); // theta rotates around x-axis
 
     QMatrix4x4 matView; // Identity
     matView.lookAt(vecEye, vecTarget, vecUp);

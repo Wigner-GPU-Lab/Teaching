@@ -17,8 +17,8 @@ int main(int argc, char *argv[])
     my_surfaceformat.setRenderableType(QSurfaceFormat::RenderableType::OpenGL);
     my_surfaceformat.setProfile(QSurfaceFormat::OpenGLContextProfile::CoreProfile);
     my_surfaceformat.setSwapBehavior(QSurfaceFormat::SwapBehavior::DoubleBuffer);
-    my_surfaceformat.setMajorVersion(3);
-    my_surfaceformat.setMinorVersion(3);
+    my_surfaceformat.setMajorVersion(4);
+    my_surfaceformat.setMinorVersion(2);
     my_surfaceformat.setRedBufferSize(8);
     my_surfaceformat.setGreenBufferSize(8);
     my_surfaceformat.setBlueBufferSize(8);
@@ -31,8 +31,8 @@ int main(int argc, char *argv[])
 	nbody.setDeviceType(CL_DEVICE_TYPE_GPU);
 	nbody.setFormat(my_surfaceformat);
 	nbody.setVisibility(QWindow::Maximized);
-    nbody.setMaxFPS(160);
-    nbody.setMaxIPS(10);
+    nbody.setMaxFPS(60);
+    //nbody.setMaxIPS(10);
 	nbody.setAnimating(true);
 
     return app.exec();

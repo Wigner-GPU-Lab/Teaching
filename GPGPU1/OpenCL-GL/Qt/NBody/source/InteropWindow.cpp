@@ -264,14 +264,14 @@ void InteropWindow::render_helper()
         }
         m_gl_context->doneCurrent();
         
-        //m_painter_context->makeCurrent(this);
-        //{
-        //    // Call unimplemented QOpenGLPainting drawing function
-        //    m_painter->begin(m_gl_paintdevice);
-        //    render(m_painter);
-        //    m_painter->end();
-        //}
-        //m_painter_context->doneCurrent();
+        m_painter_context->makeCurrent(this);
+        {
+            // Call unimplemented QOpenGLPainting drawing function
+            m_painter->begin(m_gl_paintdevice);
+            render(m_painter);
+            m_painter->end();
+        }
+        m_painter_context->doneCurrent();
         
         // Restart the limiter once the drawing is done
 #ifdef QTIMER
