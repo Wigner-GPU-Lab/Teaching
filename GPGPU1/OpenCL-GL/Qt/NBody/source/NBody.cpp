@@ -72,6 +72,14 @@ void NBody::initializeGL()
 	if (!sp->link()) qWarning("%s", sp->log().data());
 	qDebug("NBody: Done linking shaders");
 
+    // Setup shader attributes
+    //if (!sp->bind()) qWarning("QGripper: Failed to bind shaderprogram");
+    //sp->enableAttributeArray(0);  checkGLerror();
+    //sp->enableAttributeArray(1);  checkGLerror();
+    //sp->setAttributeArray(0, GL_FLOAT, (GLvoid *)(NULL), 3, sizeof(real4));                     checkGLerror();
+    //sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 3 * sizeof(real)), 1, sizeof(real4));  checkGLerror();
+    //sp->release(); checkGLerror();
+
 	// Init device memory
 	qDebug("NBody: Initializing OpenGL buffers...");
 
@@ -91,13 +99,12 @@ void NBody::initializeGL()
 	std::transform(vbos.begin(), vbos.end(), vaos.begin(), [this](std::unique_ptr<QOpenGLBuffer>& vbo)
 	{
 		auto vao = std::make_unique<QOpenGLVertexArrayObject>(this);
+        if (!vao->create()) qWarning("QGripper: Could not create VAO");
 
 		vao->bind();
-		vbo->bind();
-		sp->enableAttributeArray(0);  checkGLerror();
-		sp->enableAttributeArray(1);  checkGLerror();
-		sp->setAttributeArray(0, GL_FLOAT, (GLvoid *)(NULL), 3, sizeof(real4));   checkGLerror();
-		sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 3 * sizeof(real)), 1, sizeof(real4));   checkGLerror();
+        {
+            if (!vbo->bind()) qWarning("QGripper: Could not bind VBO");
+        }
 		vao->release();
 
 		return std::move(vao);
@@ -191,8 +198,8 @@ void NBody::initializeCL()
 // Override unimplemented InteropWindow function
 void NBody::updateScene()
 {
-	compute_queue.enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire_release[0]);
-
+	//compute_queue.enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire_release[0]);
+    /*
 	auto compute_event = kernel_functor{ step_kernel }(cl::EnqueueArgs{ compute_queue, gws },
 		                                               posBuffs[Front],
 		                                               posBuffs[Back],
@@ -201,18 +208,18 @@ void NBody::updateScene()
 		                                               (cl_uint)particle_count,
 		                                               (real)0.005,
 		                                               (real)1.0);
-
-	compute_queue.enqueueReleaseGLObjects(&interop_resources, nullptr, &acquire_release[1]);
+    */
+	//compute_queue.enqueueReleaseGLObjects(&interop_resources, nullptr, &acquire_release[1]);
     
     // Wait for all OpenCL commands to finish
     compute_queue.finish();
-    //t += params.dt; stepNum++;
-    imageDrawn = false;
-
-    // Swap fron and back handles
+    /*
+    // Swap front and back buffer handles
     std::swap(vaos[Front], vaos[Back]);
     std::swap(posBuffs[Front], posBuffs[Back]);
     std::swap(velBuffs[Front], velBuffs[Back]);
+    */
+    imageDrawn = false;
 }
 
 // Override unimplemented InteropWindow function
@@ -226,11 +233,16 @@ void NBody::render()
 
     // Draw
     if(!sp->bind()) qWarning("QGripper: Failed to bind shaderprogram");
-    vaos[Front]->bind(); checkGLerror();
+    vaos[Back]->bind(); checkGLerror();
+
+    sp->enableAttributeArray(0);  checkGLerror();
+    sp->enableAttributeArray(1);  checkGLerror();
+    sp->setAttributeArray(0, GL_FLOAT, (GLvoid *)(NULL), 3, sizeof(real4));                     checkGLerror();
+    sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 3 * sizeof(real)), 1, sizeof(real4));  checkGLerror();
 
     glFuncs->glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(particle_count)); checkGLerror();
 
-    vaos[Front]->release(); checkGLerror();
+    vaos[Back]->release(); checkGLerror();
     sp->release(); checkGLerror();
 
     // Wait for all drawing commands to finish
@@ -249,14 +261,14 @@ void NBody::render(QPainter* painter)
     text.append(" | FPS = ");
     text.append(QString::number(getActFPS()));
      
-    painter->setBackgroundMode(Qt::TransparentMode);
-    painter->setPen(Qt::white);
-    painter->setFont(QFont("Arial", 30));
-    painter->drawText(QRect(0, 0, 280, 50), Qt::AlignLeft, text);
+    //painter->setBackgroundMode(Qt::TransparentMode);
+    //painter->setPen(Qt::white);
+    //painter->setFont(QFont("Arial", 30));
+    //painter->drawText(QRect(0, 0, 280, 50), Qt::AlignLeft, text);
     
     this->setTitle(text);
 
-    Q_UNUSED(painter);
+    //Q_UNUSED(painter);
 }
 
 // Override InteropWindow function
@@ -306,8 +318,8 @@ bool NBody::event(QEvent *event_in)
 // Input handler function
 void NBody::mouseDrag(QMouseEvent* event_in)
 {
-    phi += (event_in->x() - mousePos.x()) * 0.005f;
-	theta += (event_in->y() - mousePos.y()) * -0.005f;
+    phi += (event_in->x() - mousePos.x()) * 0.25f;
+	theta += (event_in->y() - mousePos.y()) * -0.25f;
     
     needMatrixReset = true;
     
@@ -357,7 +369,7 @@ void NBody::setMatrices()
 
     QMatrix4x4 matWorld; // Identity
     matWorld.rotate(theta, { 0, 0, 1 }); // theta rotates around z-axis
-    matWorld.rotate(phi,   { 1, 0, 0 }); // theta rotates around x-axis
+    matWorld.rotate(phi,   { 0, 1, 0 }); // theta rotates around x-axis
 
     QMatrix4x4 matView; // Identity
     matView.lookAt(vecEye, vecTarget, vecUp);
@@ -365,8 +377,8 @@ void NBody::setMatrices()
     QMatrix4x4 matProj; // Identity
     matProj.perspective(fov,
                         static_cast<float>(this->width()) / this->height(),
-                        dist + z_abs_range,
-                        dist + 2 * z_abs_range);
+                        std::numeric_limits<float>::epsilon(),
+                        std::numeric_limits<float>::max());
 
     sp->bind();
     sp->setUniformValue("mat_MVP", matProj * matView * matWorld);

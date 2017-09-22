@@ -182,6 +182,7 @@ bool InteropWindow::lookForDeviceType(cl::Platform& plat_in, cl_bitfield devtype
         // Single-device init
         m_cl_devices.push_back(possible_devices.at(0));
         m_cl_context = cl::Context(possible_devices.at(0), properties.data(), nullptr, nullptr, &CL_err); checkCLerror();
+
         for (auto& dev : m_cl_devices)
         {
             m_cl_commandqueues.push_back(cl::CommandQueue(m_cl_context, dev, 0, &CL_err));
@@ -259,17 +260,18 @@ void InteropWindow::render_helper()
         {   
             // Call unimplemented native OpenGL drawing function
             render();
+            m_gl_context->swapBuffers(this);
         }
-        m_gl_context->swapBuffers(this);
+        m_gl_context->doneCurrent();
         
-        m_painter_context->makeCurrent(this);
-        {
-            // Call unimplemented QOpenGLPainting drawing function
-            m_painter->begin(m_gl_paintdevice);
-            render(m_painter);
-            m_painter->end();
-        }
-        m_painter_context->doneCurrent();
+        //m_painter_context->makeCurrent(this);
+        //{
+        //    // Call unimplemented QOpenGLPainting drawing function
+        //    m_painter->begin(m_gl_paintdevice);
+        //    render(m_painter);
+        //    m_painter->end();
+        //}
+        //m_painter_context->doneCurrent();
         
         // Restart the limiter once the drawing is done
 #ifdef QTIMER
@@ -368,7 +370,7 @@ void InteropWindow::resizeEvent(QResizeEvent *event_in)
             resizeGL(event_in);
         }
         m_gl_context->doneCurrent();
-        /*
+        
         m_painter_context->makeCurrent(this);
         {
             m_gl_paintdevice->setSize(size());
@@ -377,7 +379,7 @@ void InteropWindow::resizeEvent(QResizeEvent *event_in)
             m_painter->end();
         }
         m_painter_context->doneCurrent();
-        */
+        
         renderNow();
     }
 }

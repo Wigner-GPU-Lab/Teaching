@@ -31,8 +31,8 @@ int main(int argc, char *argv[])
 	nbody.setDeviceType(CL_DEVICE_TYPE_GPU);
 	nbody.setFormat(my_surfaceformat);
 	nbody.setVisibility(QWindow::Maximized);
-    //my_gripper.setMaxFPS(10);
-    //my_gripper.setMaxIPS(10);
+    nbody.setMaxFPS(160);
+    nbody.setMaxIPS(10);
 	nbody.setAnimating(true);
 
     return app.exec();
