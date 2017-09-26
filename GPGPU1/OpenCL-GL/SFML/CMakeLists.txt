@@ -11,4 +11,4 @@ if (WIN32)
 endif (WIN32)
 
 # Recurse into sample code directories
-add_subdirectory (SFML-HelloTriangle)
+add_subdirectory (Schrodinger)
