@@ -145,8 +145,22 @@ bool InteropWindow::lookForDeviceType(cl::Platform& plat_in, cl_bitfield devtype
     // Method 1 //
     /*
     // Create a context holding all devices capable of interoperating with the OpenGL context
-    auto possible_context = cl::Context(devtype_in, properties.data(), nullptr, nullptr, &CL_err); checkCLerror();
-    std::vector<cl::Device> possible_devices(possible_context.getInfo<CL_CONTEXT_DEVICES>(&CL_err)); checkCLerror();
+    auto possible_context = cl::Context(devtype_in, properties.data(), nullptr, nullptr); checkCLerror();
+    std::vector<cl::Device> possible_devices(possible_context.getInfo<CL_CONTEXT_DEVICES>()); checkCLerror();
+
+    if (!possible_devices.empty())
+    {
+        qDebug("InteropWindow: Interop capable device(s) found");
+        m_cl_platform = plat_in;
+
+        for (auto& dev : m_cl_devices)
+        {
+            m_cl_commandqueues.push_back(cl::CommandQueue(m_cl_context, dev, 0, &CL_err));
+            checkCLerror();
+        }
+
+        found = true;
+    }
     */
     // Method 2 //
     
@@ -168,7 +182,6 @@ bool InteropWindow::lookForDeviceType(cl::Platform& plat_in, cl_bitfield devtype
         
         return err != CL_SUCCESS;
     });
-    //cl::Context possible_context(possible_devices, properties.data(), nullptr, nullptr, &CL_err); checkCLerror();
     
     if (!possible_devices.empty())
     {
@@ -176,8 +189,8 @@ bool InteropWindow::lookForDeviceType(cl::Platform& plat_in, cl_bitfield devtype
         m_cl_platform = plat_in;
 
         // Multi-device init
+        //m_cl_context = cl::Context(possible_devices, properties.data(), nullptr, nullptr, &CL_err); checkCLerror();
         //m_cl_devices = possible_devices;
-        //m_cl_context = possible_context;
 
         // Single-device init
         m_cl_devices.push_back(possible_devices.at(0));
@@ -191,7 +204,7 @@ bool InteropWindow::lookForDeviceType(cl::Platform& plat_in, cl_bitfield devtype
 
         found = true;
     }
-
+    
     return found;
 }
 
