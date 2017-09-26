@@ -208,11 +208,14 @@ void NBody::updateScene()
     // NOTE 1: When cl_khr_gl_event is NOT supported, then clFinish() is the only portable
     //         sync method and hence that will be called.
     //
-    // NOTE 2: When cl_khr_gl_event IS supported, then it is sufficient to wait for events
-    //         of clEnqueueAcquireGLObjects, as the spec guarantees that all OpenGL
-    //         operations involving the acquired memory objects have finished.
-    //
-    //         See: opencl-1.2-extensions.pdf (Rev. 15. Chapter 9.8.5
+    // NOTE 2.1: When cl_khr_gl_event IS supported AND the possibly conflicting OpenGL
+    //           context is current to the thread, then it is sufficient to wait for events
+    //           of clEnqueueAcquireGLObjects, as the spec guarantees that all OpenGL
+    //           operations involving the acquired memory objects have finished. It also
+    //           guarantees that any OpenGL commands issued after clEnqueueReleaseGLObjects
+    //           will not execute until the release is complete.
+    //         
+    //           See: opencl-1.2-extensions.pdf (Rev. 15. Chapter 9.8.5)
 
 	compute_queue.enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire_release[0]);
     
