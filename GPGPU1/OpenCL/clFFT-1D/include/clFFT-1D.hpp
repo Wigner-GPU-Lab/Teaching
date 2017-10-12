@@ -30,15 +30,6 @@ namespace util
     }
 }
 
-void checkerr(cl_int err, const char* name)
-{
-	if (err != CL_SUCCESS)
-	{
-		std::cerr << name << "(" << err << ")" << std::endl;
-		exit(err);
-	}
-}
-
 namespace cl
 {
 	namespace fft
