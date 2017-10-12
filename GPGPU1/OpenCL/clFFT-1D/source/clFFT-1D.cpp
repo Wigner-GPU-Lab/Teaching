@@ -43,11 +43,12 @@ int main()
         cl::CommandQueue queue{ context, device, cl::QueueProperties::Profiling };
 
         // Fill arrays with random values between 0 and 100
+        std::cout << "Initializing data" << std::endl;
         auto prng = [engine = std::default_random_engine{},
                      distribution = std::uniform_real_distribution<cl_float>{ -100.0, 100.0 }]() mutable
         {
             return std::complex<cl_float>{ distribution(engine),
-                                        distribution(engine) };
+                                           distribution(engine) };
         };
 
         std::vector<std::complex<cl_float>> vec_x;
@@ -58,7 +59,7 @@ int main()
         cl::Buffer buf_x{ context, std::begin(vec_x), std::end(vec_x), false };
 
         // clFFT initialization
-        std::cout << "Initializing clFFT" << std::endl;
+        std::cout << "Initializing clFFT\n" << std::endl;
         cl::fft::Runtime fft_runtime;
         cl::fft::Plan fft_plan{ context,
                                 lengths.begin(), lengths.end(),
