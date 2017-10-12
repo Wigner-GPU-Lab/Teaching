@@ -104,9 +104,7 @@ namespace cl
                 : m_context(context)
             {
                 clfftStatus status;
-                std::vector<std::size_t> lengths;
-
-                std::copy(first, last, std::back_inserter(lengths));
+                std::vector<std::size_t> lengths(first, last);
 
                 switch (lengths.size())
                 {
@@ -123,6 +121,8 @@ namespace cl
                     throw std::domain_error{ "Requested FFT dimensionality is not supported" };
                     break;
                 }
+                if (status != clfftStatus::CLFFT_SUCCESS)
+                    throw cl::fft::Error{ status, "cl::fft::Plan::Plan with clfftCreateDefaultPlan" };
 
                 status = clfftSetPlanBatchSize(m_handle, batch);
                 if (status != clfftStatus::CLFFT_SUCCESS)
@@ -143,8 +143,12 @@ namespace cl
 
             Plan(const Plan& plan) : m_context(plan.m_context())
             {
-                clfftCopyPlan(&m_handle, plan.m_context(), plan());
+                clfftStatus status = clfftCopyPlan(&m_handle, plan.m_context(), plan());
+                if (status != clfftStatus::CLFFT_SUCCESS)
+                    throw cl::fft::Error{ status, "cl::fft::Plan::Plan with clfftCopyPlan" };
             }
+
+            Plan(Plan&& plan) = default;
 
             ~Plan()
             {
@@ -153,13 +157,13 @@ namespace cl
                 //    throw cl::fft::Error{ status, "cl::fft::Plan::~Plan with clfftDestroyPlan" };
             }
 
-            const clfftPlanHandle& operator()() const throw() { return m_handle; }
+            const clfftPlanHandle& operator()() const noexcept { return m_handle; }
 
-            void bake(cl::CommandQueue& queue)
+            void bake(cl::CommandQueue queue)
             {
                 clfftStatus status = clfftBakePlan(m_handle, 1u, &queue(), nullptr, nullptr);
                 if (status != clfftStatus::CLFFT_SUCCESS)
-                    throw cl::fft::Error{ status, "cl::fft::Plan::bake" };
+                    throw cl::fft::Error{ status, "cl::fft::Plan::bake with clfftBakePlan" };
             }
 
             template<typename InputIt>
@@ -171,7 +175,7 @@ namespace cl
 
                 clfftStatus status = clfftBakePlan(m_handle, static_cast<cl_uint>(queues.size()), queues.data(), nullptr, nullptr);
                 if (status != clfftStatus::CLFFT_SUCCESS)
-                    throw cl::fft::Error{ status, "cl::fft::Plan::bake" };
+                    throw cl::fft::Error{ status, "cl::fft::Plan::bake with clfftBakePlan" };
             }
 
         private:
