@@ -187,25 +187,12 @@ namespace cl
         class TransformArgs
         {
             friend cl::Event transform(TransformArgs args,
-                                       cl::Buffer& input_buffer,
-                                       cl::Buffer& output_buffer);
+                                       cl::Buffer input_buffer,
+                                       cl::Buffer output_buffer);
 
             friend cl::Event transform(TransformArgs args,
-                                       cl::Buffer& input_buffer);
+                                       cl::Buffer input_buffer);
         public:
-
-            TransformArgs(Plan plan,
-                          cl::CommandQueue queue,
-                          clfftDirection dir,
-                          const std::vector<cl::Event>& wait_events,
-                          cl::Buffer tmp = cl::Buffer{})
-                : m_plan{ plan }
-                , m_queue{ queue }
-                , m_dir{ dir }
-                , m_events(wait_events)
-                , m_tmp{ tmp }
-            {
-            }
 
             template<typename InputIt>
             TransformArgs(Plan plan,
@@ -214,10 +201,24 @@ namespace cl
                           InputIt first,
                           InputIt last,
                           cl::Buffer tmp = cl::Buffer{})
+                : m_plan{ plan }
+                , m_queue{ queue }
+                , m_dir{ dir }
+                , m_events(first, last)
+                , m_tmp{ tmp }
+            {
+            }
+
+            TransformArgs(Plan plan,
+                          cl::CommandQueue queue,
+                          clfftDirection dir,
+                          std::initializer_list<cl::Event> wait_events,
+                          cl::Buffer tmp = cl::Buffer{})
                 : TransformArgs(plan,
                                 queue,
                                 dir,
-                                std::vector<cl::Event>(first, last),
+                                wait_events.begin(),
+                                wait_events.end(),
                                 tmp)
             {
             }
@@ -256,8 +257,13 @@ namespace cl
                 if (status != clfftStatus::CLFFT_SUCCESS)
                     throw cl::fft::Error{ status, "cl::fft::transform with clfftGetResultLocation" };
 
-                if (loc == clfftResultLocation::CLFFT_INPLACE)
-                    throw std::logic_error{ "cl::fft::transform called with in-place plan and out-of-place syntax" };
+                if (input_buffer != output_buffer &&
+                    loc == clfftResultLocation::CLFFT_INPLACE)
+                    throw std::logic_error{ "cl::fft::transform called with in-place plan and different input/output buffers" };
+
+                if (input_buffer == output_buffer &&
+                    loc == clfftResultLocation::CLFFT_OUTOFPLACE)
+                    throw std::logic_error{ "cl::fft::transform called with out-of-place plan and identical input/output buffers" };
             }
 
             std::vector<cl_event> cl_events;
@@ -282,8 +288,9 @@ namespace cl
         }
 
         cl::Event transform(TransformArgs args,
-                            cl::Buffer& input_buffer)
+                            cl::Buffer input_buffer)
         {
+            /*
             clfftStatus status;
             cl::Event result;
 
@@ -315,7 +322,10 @@ namespace cl
             if (status != clfftStatus::CLFFT_SUCCESS)
                 throw cl::fft::Error{ status, "cl::fft::transform" };
 
-            return result;
+            return result;*/
+            transform(args,
+                      input_buffer,
+                      input_buffer);
         }
 
 		clfftStatus	bakePlan(clfftPlanHandle plHandle, cl::CommandQueue& commQueueFFT)
