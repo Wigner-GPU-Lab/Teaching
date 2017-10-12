@@ -73,20 +73,20 @@ int main()
         auto start = std::chrono::high_resolution_clock::now();
 
         // Explicit dispatch of data before launch
-        std::vector<cl::Event> dispatch(1);
+        cl::Event dispatch;
         queue.enqueueWriteBuffer(buf_x,
                                  CL_FALSE,
                                  0,
                                  batch * lengths.at(0) * sizeof(std::complex<cl_float>),
                                  vec_x.data(),
                                  nullptr,
-                                 &dispatch.at(0));
+                                 &dispatch);
         // Execute the plan
-        std::vector<cl::Event> exec{ cl::fft::transform(cl::fft::TransformArgs{ fft_plan,
-                                                                                queue,
-                                                                                clfftDirection::CLFFT_FORWARD,
-                                                                                dispatch },
-                                                        buf_x) };
+        cl::Event exec = cl::fft::transform(cl::fft::TransformArgs{ fft_plan,
+                                                                    queue,
+                                                                    clfftDirection::CLFFT_FORWARD,
+                                                                    { dispatch } },
+                                            buf_x);
 
         // Initiate data fetch from devices
         cl::Event fetch;
@@ -95,7 +95,7 @@ int main()
                                 0,
                                 batch * lengths.at(0) * sizeof(std::complex<cl_float>),
                                 vec_x.data(),
-                                &exec,
+                                nullptr,
                                 &fetch);
         // Wait to finish
         queue.flush();
@@ -105,8 +105,8 @@ int main()
         auto end = std::chrono::high_resolution_clock::now();
 
         std::cout << "Total time as measured by std::chrono::high_precision_timer =\n\n\t" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " milliseconds.\n" << std::endl;
-        std::cout << "Data dispatch as measured by cl::Event::getProfilingInfo =\n\n\t" << util::get_duration<CL_PROFILING_COMMAND_START, CL_PROFILING_COMMAND_END, std::chrono::milliseconds>(dispatch.at(0)).count() << " milliseconds.\n" << std::endl;
-        std::cout << "FFT execution as measured by cl::Event::getProfilingInfo =\n\n\t" << util::get_duration<CL_PROFILING_COMMAND_START, CL_PROFILING_COMMAND_END, std::chrono::milliseconds>(exec.at(0)).count() << " milliseconds.\n" << std::endl;
+        std::cout << "Data dispatch as measured by cl::Event::getProfilingInfo =\n\n\t" << util::get_duration<CL_PROFILING_COMMAND_START, CL_PROFILING_COMMAND_END, std::chrono::milliseconds>(dispatch).count() << " milliseconds.\n" << std::endl;
+        std::cout << "FFT execution as measured by cl::Event::getProfilingInfo =\n\n\t" << util::get_duration<CL_PROFILING_COMMAND_START, CL_PROFILING_COMMAND_END, std::chrono::milliseconds>(exec).count() << " milliseconds.\n" << std::endl;
         std::cout << "Data fetch as measured by cl::Event::getProfilingInfo =\n\n\t" << util::get_duration<CL_PROFILING_COMMAND_START, CL_PROFILING_COMMAND_END, std::chrono::milliseconds>(fetch).count() << " milliseconds.\n" << std::endl;
     }
     catch (cl::fft::Error error) // If any clFFT error happens

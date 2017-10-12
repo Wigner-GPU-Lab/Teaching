@@ -323,9 +323,9 @@ namespace cl
                 throw cl::fft::Error{ status, "cl::fft::transform" };
 
             return result;*/
-            transform(args,
-                      input_buffer,
-                      input_buffer);
+            return transform(args,
+                             input_buffer,
+                             input_buffer);
         }
         /*
 		clfftStatus	bakePlan(clfftPlanHandle plHandle, cl::CommandQueue commQueueFFT)
