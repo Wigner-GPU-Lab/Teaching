@@ -327,8 +327,8 @@ namespace cl
                       input_buffer,
                       input_buffer);
         }
-
-		clfftStatus	bakePlan(clfftPlanHandle plHandle, cl::CommandQueue& commQueueFFT)
+        /*
+		clfftStatus	bakePlan(clfftPlanHandle plHandle, cl::CommandQueue commQueueFFT)
 		{
             return clfftBakePlan(plHandle, 1u, &commQueueFFT(), nullptr, nullptr);
 		}
@@ -358,5 +358,6 @@ namespace cl
 										 outputBuffer() != cl::Buffer()() ? &outputBuffer() : nullptr,
 										 tmpBuffer() != cl::Buffer()() ? tmpBuffer() : static_cast<cl_mem>(NULL));
 		}
+        */
 	}
 } // namescpace cl
