@@ -11,6 +11,11 @@ Science Targeted Programming of Graphical Processors I.
 
 The home page of the course with the slides can be found [here](http://gpu.wigner.mta.hu/en/laboratory/teaching/science-targeted-programming-of-graphical-processors-1). Sample codes are in [this](https://github.com/Wigner-GPU-Lab/Teaching/tree/master/GPGPU1) folder.
 
+Science Targeted Programming of Graphical Processors II.
+-------------
+
+The home page of the course with the slides can be found [here](http://gpu.wigner.mta.hu/en/laboratory/teaching/science-targeted-programming-of-graphical-processors-2). Sample codes are in [this](https://github.com/Wigner-GPU-Lab/Teaching/tree/master/GPGPU2) folder.
+
 CMake Tutorial
 -------------
 
