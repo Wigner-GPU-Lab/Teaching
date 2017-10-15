@@ -8,7 +8,7 @@
 #endif
 
 //Compile time Integer:
-template<int i> struct Int{ static const int value = i; };
+template<int i> struct Int { static const int value = i; };
 
 //Tuple implementation:
 template<typename... Ts>
@@ -108,4 +108,3 @@ auto foldl(F&& f, Z&& z, Tuple<Ts...> const& t)->decltype(foldl_impl(std::forwar
 {
     return foldl_impl(std::forward<F>(f), std::forward<Z>(z), t.data);
 }
-

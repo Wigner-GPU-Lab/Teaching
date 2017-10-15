@@ -7,8 +7,34 @@
 #define HOST_DEVICE
 #endif
 
+#include <type_traits>
+#include <utility>
+
+#ifdef __CUDACC__
+#define HOST_DEVICE __host__ __device__
+#else
+#define HOST_DEVICE
+#endif
+
 //Compile time Integer:
-template<int i> struct Int { static const int value = i; };
+template<int i> struct Int { static const int value = i; /*operator int()const { return value; }*/ };
+
+template<typename T> auto operator*(Int<0> const&, T const& x) { return Int<0>(); }
+template<typename T> auto operator*(T&& x, Int<0> const&) { return Int<0>(); }
+template<typename T> auto operator+(Int<0> const&, T&& x) { return std::forward<T>(x); }
+template<typename T> auto operator+(T && x, Int<0> const&) { return std::forward<T>(x); }
+auto operator+(Int<0> const&, Int<0> const&) { return Int<0>(); }
+
+template<typename T> auto operator*(Int<1> const&, T&& x) { return std::forward<T>(x); }
+template<typename T> auto operator*(T const& x, Int<1> const&) { return std::forward<T>(x); }
+template<typename T> auto operator*(Int<-1> const&, T const& x) { return -x; }
+template<typename T> auto operator*(T const& x, Int<-1> const&) { return -x; }
+auto operator*(Int<0> const&, Int<0> const&) { return Int<0>(); }
+auto operator*(Int<1> const&, Int<1> const&) { return Int<1>(); }
+
+auto add = [](auto const& x, auto const& y) { return x + y; };
+auto sub = [](auto const& x, auto const& y) { return x - y; };
+auto mul = [](auto const& x, auto const& y) { return x * y; };
 
 template<typename... I>
 struct Indices {};
@@ -80,7 +106,10 @@ struct Vector
 	T data[n];
 
 	template<int i> T const& operator[] HOST_DEVICE (Int<i> const&)const { static_assert(i<n, "Vector overindexing"); return data[i]; }
-	template<int i> T&       operator[] HOST_DEVICE (Int<i> const&)      { static_assert(i<n, "Vector overindexing"); return data[i]; }
+	template<int i> T&       operator[] HOST_DEVICE (Int<i> const&) { static_assert(i<n, "Vector overindexing"); return data[i]; }
+
+	T const& operator[] HOST_DEVICE (int const& i)const { return data[i]; }
+	T&       operator[] HOST_DEVICE (int const& i) { return data[i]; }
 };
 
 template<typename T, typename... Ts> HOST_DEVICE
@@ -126,7 +155,7 @@ auto foldl_impl(F&& f, Int<n>const&, Int<n>const&, Z&& z, I&&)
 }
 
 template<typename F, int n, int c, typename Z, typename I> HOST_DEVICE
-auto foldl_impl(F&& f, Int<n>const& N, Int<c>const& C, Z&& z, I&& i)
+auto foldl_impl(F&& f, Int<n>const& N, Int<c>const& C, Z&& z, I && i)
 {
 	return f(foldl_impl(std::forward<F>(f), N, Int<c + 1>(), std::forward<Z>(z), i), i[C]);
 }
@@ -137,7 +166,44 @@ auto foldl(F&& f, Z&& z, I&& i)
 	return foldl_impl(std::forward<F>(f), size(i), Int<0>(), std::forward<Z>(z), std::forward<I>(i));
 }
 
-/*#include <iostream>
+template<typename T, typename U> auto dot(T const& a, U const& b)
+{
+	return foldl(add, Int<0>(), zip(mul, a, b));
+}
+
+template<typename T> auto cross(Vector<T, 3> const& a, Vector<T, 3> const& b)
+{
+	using Z = Int<0>;
+	using U = Int<1>;
+	using M = Int<-1>;
+	using eps =
+		Tuple<
+		Tuple< Tuple<Z, Z, Z>, Tuple<Z, Z, U>, Tuple<Z, M, Z> >,
+		Tuple< Tuple<Z, Z, M>, Tuple<Z, Z, Z>, Tuple<U, Z, Z> >,
+		Tuple< Tuple<Z, U, Z>, Tuple<M, Z, Z>, Tuple<Z, Z, Z> >
+		>;
+
+	return map([&](auto const& slice)
+	{
+		return dot(map([&](auto const& row) { return dot(row, b); }, slice), a);
+	}, eps());
+}
+
+template<typename T> auto cross0(Vector<T, 3> const& v, Vector<T, 3> const& u)
+{
+	return Vector<T, 3>{ {v[1] * u[2] - v[2] * u[1],
+		v[2] * u[0] - v[0] * u[2],
+		v[0] * u[1] - v[1] * u[0]}};
+}
+
+auto crossX(Vector<float, 3> const& a, Vector<float, 3> const& b)
+{
+	return cross0(a, b);
+}
+
+
+
+#include <iostream>
 #include <cmath>
 int main()
 {
@@ -149,12 +215,16 @@ int main()
 	auto t = tuple(1, 2, sqrt(2));
 	auto p = map(l1, t);
 
-	auto v = vec(4.0, 5.0, 1.1);
+	auto v = vec(4.0, 5.0, -11.0);
+	auto u = vec(-3.0, 7.0, 2.0);
 	auto q = map(l1, v);
 
 	auto r = zip(l2, t, v);
 
 	printf("%f\n", foldl(l3, 0.0, v));
+
+	
+	auto cr = cross(v, u);
 	return 0;
-}*/
+}
 
