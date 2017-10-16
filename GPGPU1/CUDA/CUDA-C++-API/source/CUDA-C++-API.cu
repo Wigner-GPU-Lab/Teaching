@@ -1,4 +1,8 @@
-#include <iostream>
+#include <iostream>   // std::cout
+#include <algorithm>  // std::max_element
+#include <vector>     // std::vector
+#include <cmath>      // std::abs
+
 
 __global__
 void saxpy(int n, float a, float *x, float *y)
@@ -19,7 +23,7 @@ int main(void)
   cudaMemcpy(d_x, x.data(), N*sizeof(float), cudaMemcpyHostToDevice);
   cudaMemcpy(d_y, y.data(), N*sizeof(float), cudaMemcpyHostToDevice);
 
-  __global__ auto saxpy = [=, a = 2.0f]()
+  auto saxpy = [=, a = 2.0f]() __global__
   {
       int i = blockIdx.x*blockDim.x + threadIdx.x;
       return d_y[i] = a * d_x[i] + d_y[i];
@@ -30,12 +34,12 @@ int main(void)
 
   cudaMemcpy(y.data(), d_y, N*sizeof(float), cudaMemcpyDeviceToHost);
 
-  auto maxError = std::
-
-  float maxError = 0.0f;
-  for (int i = 0; i < N; i++)
-    maxError = max(maxError, abs(y[i]-4.0f));
-
+  float maxError = std::max_element(y.cbegin(), y.cend(),
+                                    [res = 4.0](const float& lhs,
+                                                const float& rhs)
+  {
+    return std::abs(lhs - res) < std::abs(rhs - res;)
+  };)
   std::cout << "Max error: "<< maxError << std::endl;
 
   cudaFree(d_x);
