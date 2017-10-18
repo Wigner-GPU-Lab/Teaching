@@ -18,7 +18,12 @@ template<> struct Tuple_<>{};
 
 template<typename T> struct Tuple_<T>{ T e; };
 
-template<typename T, typename U, typename... Us> struct Tuple_<T, U, Us...>{ T e; Tuple_<U, Us...> f; };
+template<typename T, typename U, typename... Us>
+struct Tuple_<T, U, Us...>
+{
+	T e; 
+	Tuple_<U, Us...> f;
+};
 
 //Tuple indexers:
 template<typename T> HOST_DEVICE
@@ -45,8 +50,8 @@ struct Tuple
 {
     Tuple_<Ts...> data;
     
-    template<int n> decltype(auto) operator[] HOST_DEVICE (Int<n> const& N)const{ return idx(data, N); }
-    template<int n> decltype(auto) operator[] HOST_DEVICE (Int<n> const& N)     { return idx(data, N); }
+    template<int n> decltype(auto) operator[] HOST_DEVICE (Int<n> const& N)const{ static_assert(n<sizeof...(Ts), "Tuple overindexing"); return idx(data, N); }
+    template<int n> decltype(auto) operator[] HOST_DEVICE (Int<n> const& N)     { static_assert(n<sizeof...(Ts), "Tuple overindexing"); return idx(data, N); }
 };
 
 template<typename... Ts> HOST_DEVICE

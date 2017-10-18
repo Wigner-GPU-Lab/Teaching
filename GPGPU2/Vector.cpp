@@ -15,7 +15,7 @@ template<typename T, int n>
 struct Vector
 {
 	T data[n];
-	auto& operator[](int k) { return data[k]; }
+	auto& operator[](int k)      { return data[k]; }
 	auto& operator[](int k)const { return data[k]; }
 };
 
@@ -47,7 +47,7 @@ template<typename T, typename V>
 auto sum(T&& z, V&& v){ return fold(add, z, v); }
 
 //implementations:
-template<typename C, typename T, int n> auto operator*(C const& c, Vector<T, n> const& v) { return map(cmul_l(c), v); }
+template<typename C, typename T, int n> auto operator*(C const& c, Vector<T, n>const& v) { return map(cmul_l(c), v); }
 template<typename C, typename T, int n> auto operator*(Vector<T, n>const& v, C const& c) { return map(cmul_r(c), v); }
 template<typename C, typename T, int n> auto operator/(Vector<T, n>const& v, C const& c) { return map(cdiv(c), v); }
 
@@ -123,6 +123,4 @@ int main()
 
 	std::cout << cross0(a, b) << "\n";
 	std::cout << cross(a, b) << "\n";
-
-	
 }

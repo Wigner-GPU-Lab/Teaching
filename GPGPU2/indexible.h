@@ -7,17 +7,8 @@
 #define HOST_DEVICE
 #endif
 
-#include <type_traits>
-#include <utility>
-
-#ifdef __CUDACC__
-#define HOST_DEVICE __host__ __device__
-#else
-#define HOST_DEVICE
-#endif
-
 //Compile time Integer:
-template<int i> struct Int { static const int value = i; /*operator int()const { return value; }*/ };
+template<int i> struct Int { static const int value = i; };
 
 template<typename T> auto operator*(Int<0> const&, T const& x) { return Int<0>(); }
 template<typename T> auto operator*(T&& x, Int<0> const&) { return Int<0>(); }
@@ -41,14 +32,23 @@ struct Indices {};
 
 template<typename Is> struct repack_indices;
 template<int... is>
-struct repack_indices<std::integer_sequence<int, is...>> { using result = Indices<Int<is>...>; };
+struct repack_indices<std::integer_sequence<int, is...>>
+{
+	using result = Indices<Int<is>...>;
+};
 
 template<typename I> struct Indices_impl;
-template<int n> struct Indices_impl<Int<n>> { using result = typename repack_indices< std::make_integer_sequence<int, n> >::result; };
+template<int n> struct Indices_impl<Int<n>>
+{
+	using result = typename repack_indices< std::make_integer_sequence<int, n> >::result;
+};
 
 
 template<int n> HOST_DEVICE
-auto make_indices(Int<n> const&)->typename Indices_impl<Int<n>>::result { return typename Indices_impl<Int<n>>::result(); }
+auto make_indices(Int<n> const&)->typename Indices_impl<Int<n>>::result
+{
+	return typename Indices_impl<Int<n>>::result();
+}
 
 //Tuple implementation:
 template<typename... Ts>
@@ -85,8 +85,8 @@ struct Tuple
 {
 	Tuple_<Ts...> data;
 
-	template<int n> decltype(auto) operator[] HOST_DEVICE (Int<n> const& N)const { return idx(data, N); }
-	template<int n> decltype(auto) operator[] HOST_DEVICE (Int<n> const& N) { return idx(data, N); }
+	template<int n> decltype(auto) operator[] HOST_DEVICE (Int<n> const& N)const { static_assert(n<sizeof...(Ts), "Tuple overindexing"); return idx(data, N); }
+	template<int n> decltype(auto) operator[] HOST_DEVICE (Int<n> const& N)      { static_assert(n<sizeof...(Ts), "Tuple overindexing"); return idx(data, N); }
 };
 
 template<typename... Ts> HOST_DEVICE
@@ -106,7 +106,7 @@ struct Vector
 	T data[n];
 
 	template<int i> T const& operator[] HOST_DEVICE (Int<i> const&)const { static_assert(i<n, "Vector overindexing"); return data[i]; }
-	template<int i> T&       operator[] HOST_DEVICE (Int<i> const&) { static_assert(i<n, "Vector overindexing"); return data[i]; }
+	template<int i> T&       operator[] HOST_DEVICE (Int<i> const&)      { static_assert(i<n, "Vector overindexing"); return data[i]; }
 
 	T const& operator[] HOST_DEVICE (int const& i)const { return data[i]; }
 	T&       operator[] HOST_DEVICE (int const& i) { return data[i]; }
@@ -191,17 +191,10 @@ template<typename T> auto cross(Vector<T, 3> const& a, Vector<T, 3> const& b)
 
 template<typename T> auto cross0(Vector<T, 3> const& v, Vector<T, 3> const& u)
 {
-	return Vector<T, 3>{ {v[1] * u[2] - v[2] * u[1],
-		v[2] * u[0] - v[0] * u[2],
-		v[0] * u[1] - v[1] * u[0]}};
+	return Vector<T, 3>{ { v[1] * u[2] - v[2] * u[1],
+		                   v[2] * u[0] - v[0] * u[2],
+		                   v[0] * u[1] - v[1] * u[0] } };
 }
-
-auto crossX(Vector<float, 3> const& a, Vector<float, 3> const& b)
-{
-	return cross0(a, b);
-}
-
-
 
 #include <iostream>
 #include <cmath>
@@ -223,7 +216,6 @@ int main()
 
 	printf("%f\n", foldl(l3, 0.0, v));
 
-	
 	auto cr = cross(v, u);
 	return 0;
 }
