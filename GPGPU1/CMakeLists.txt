@@ -11,6 +11,7 @@ cmake_minimum_required (VERSION 3.0)
 project (GPGPU-speci)
 	
 # Behavioural options for the solution
+option (BUILD_CUDA "Build CUDA samples" OFF)
 option (BUILD_OPENCL "Build OpenCL samples" ON)
 option (BUILD_SYCL "Build SYCL samples" OFF)
 option (BUILD_OPENGL "Build OpenGL samples" ON)
@@ -70,6 +71,10 @@ option (BUILD_OPENGL "Build OpenGL samples" ON)
 #
 # Process targets based on user-input
 #
+  if (BUILD_CUDA)
+    add_subdirectory (CUDA)
+  endif (BUILD_CUDA)
+
   if (BUILD_OPENCL)
     add_subdirectory (OpenCL)
   endif (BUILD_OPENCL)
