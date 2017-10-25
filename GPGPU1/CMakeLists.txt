@@ -90,3 +90,7 @@ option (BUILD_OPENGL "Build OpenGL samples" ON)
   if (BUILD_OPENGL AND BUILD_OPENCL)
     add_subdirectory (OpenCL-GL)
   endif (BUILD_OPENGL AND BUILD_OPENCL)
+
+  if (BUILD_SYCL AND BUILD_OPENCL)
+    add_subdirectory (SYCL-GL)
+  endif (BUILD_SYCL AND BUILD_OPENCL)
