@@ -23,7 +23,15 @@
 #include <chrono>
 #include <algorithm>
 
-// SYCL include
+// OpenCL behavioral defines
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+
+// OpenCL include
+#include <CL/cl2.hpp>
+
+// SYCL includes
 #include <CL/sycl.hpp>
 
 // Rename references to this dynamically linked function to avoid collision with static link version
@@ -73,10 +81,10 @@ protected:
     virtual void resizeGL(QResizeEvent* event_in) = 0;  // Function that handles render area resize
     virtual bool event(QEvent* event_in) override;      // Override of QWindow event handler function
 
-    cl::sycl::platform& CLplatform();                   // Get associated variable
-    std::vector<cl::sycl::device>& CLdevices();         // Get associated variable
-    cl::sycl::context& CLcontext();                     // Get associated variable
-    std::vector<cl::sycl::queue>& CLcommandqueues();    // Get associated variable
+    cl::sycl::platform CLplatform();                    // Get associated variable
+    std::vector<cl::sycl::device> CLdevices();          // Get associated variable
+    cl::sycl::context CLcontext();                      // Get associated variable
+    std::vector<cl::sycl::queue> CLcommandqueues();     // Get associated variable
   
     QOpenGLFunctions_3_3_Core* glFuncs; // OpenGL functions Qt5.1
 
@@ -99,7 +107,7 @@ private:
     int m_max_IPS, m_max_FPS;           // Nomen est omen
     int m_act_IPS, m_act_FPS;           // Nomen est omen
 
-    cl::sycl::info::device_type m_device_type;          // Device type to be used
+    cl_bitfield m_device_type;          // Device type to be used
     QString m_platform_vendor;          // Implementation vendor to be used
 #ifdef QTIMER
     QElapsedTimer m_IPS_limiter, m_FPS_limiter; // Limiters
@@ -117,10 +125,10 @@ private:
     QOpenGLContext* m_painter_context;                          // Painter context
     QOpenGLPaintDevice* m_gl_paintdevice;                       // Paint Engine used by the window
     QPainter* m_painter;                                        // Painter used to draw managed content
-    cl::sycl::platform m_cl_platform;                           // OpenCL platform used
-    std::vector<cl::sycl::device> m_cl_devices;                 // OpenCL device used
-    cl::sycl::context m_cl_context;                             // OpenCL context used
-    std::vector<cl::sycl::queue> m_cl_commandqueues;            // OpenCL commandqueue used
+    cl::Platform m_cl_platform;                                 // OpenCL platform used
+    std::vector<cl::Device> m_cl_devices;                       // OpenCL device used
+    cl::Context m_cl_context;                                   // OpenCL context used
+    std::vector<cl::CommandQueue> m_cl_commandqueues;           // OpenCL commandqueue used
 
     virtual void exposeEvent(QExposeEvent* event_in) override;  // Override of QWindow expose event
     virtual void resizeEvent(QResizeEvent* event_in) override;  // Override of QWindow on resize event
@@ -130,11 +138,11 @@ private:
     void render_helper();                                       // Nomen est omen
     void updateScene_helper();                                  // Nomen est omen
 
-    bool lookForDeviceType(cl::sycl::info::device_type devtype);                // Helper function to enumerates interop capable devices of given type
-    bool lookForDeviceType(cl::sycl::platform&, cl::sycl::info::device_type);   // Helper function to enumerates interop capable devices of given type on a certain platform
+    bool lookForDeviceType(cl_bitfield devtype);                // Helper function to enumerates interop capable devices of given type
+    bool lookForDeviceType(cl::Platform&, cl_bitfield);         // Helper function to enumerates interop capable devices of given type on a certain platform
 
     gl_device nativeGLdevice();                                 // Obtain native OpenCL device handles
-    QVector<cl_context_properties> interopCLcontextProps(const cl::sycl::platform& plat);          // Context properties of interop context
+    QVector<cl_context_properties> interopCLcontextProps(const cl::Platform& plat);          // Context properties of interop context
 
     bool detectFormatMismatch(QSurfaceFormat& left, QSurfaceFormat& right);
     void printFormatMismatch();

@@ -13,7 +13,7 @@ InteropWindow::InteropWindow(QWindow *parent)
     , m_max_FPS(INT_MAX)
     , m_act_IPS(0)
     , m_act_FPS(0)
-    , m_device_type(cl::sycl::info::device_type::defaults)
+    , m_device_type(CL_DEVICE_TYPE_DEFAULT)
     , m_platform_vendor()
     , m_gl_context(0)
     , m_gl_paintdevice(0)
@@ -84,12 +84,12 @@ void InteropWindow::createCLcontext_helper()
     if(!lookForDeviceType(m_device_type)) qFatal("InteropWindow: No interoperable device could be found!");
     else
     {
-        QString platform_name(m_cl_platform.get_info<cl::sycl::info::platform::vendor>().c_str()); checkCLerror();
+        QString platform_name(m_cl_platform.getInfo<CL_PLATFORM_NAME>(&CL_err).c_str()); checkCLerror();
         qDebug() << "InteropWindow: Selected plaform: " << platform_name;
         QVector<QString> device_names;
         for (auto& device : m_cl_devices)
         {
-            device_names.push_back(device.get_info<cl::sycl::info::device::name>().c_str()); checkCLerror();
+            device_names.push_back(device.getInfo<CL_DEVICE_NAME>(&CL_err).c_str()); checkCLerror();
         }
         qDebug() << "InteropWindow: Selected devices: " << device_names;
     }
@@ -97,15 +97,16 @@ void InteropWindow::createCLcontext_helper()
 }
 
 
-bool InteropWindow::lookForDeviceType(cl::sycl::info::device_type devtype)
+bool InteropWindow::lookForDeviceType(cl_bitfield devtype)
 {
     bool dev_found = false;
 
-    auto plats = cl::sycl::platform::get_platforms();
+    std::vector<cl::Platform> plats;
 
     if(m_platform_vendor.isNull())
     {
         qDebug("InteropWindow: No platform preference. Choosing based on device preference");
+        CL_err = cl::Platform::get(&plats); checkCLerror();
         for(auto& platform : plats)
         {
             dev_found = lookForDeviceType(platform, devtype);
@@ -115,8 +116,9 @@ bool InteropWindow::lookForDeviceType(cl::sycl::info::device_type devtype)
     else
     {
         qDebug("InteropWindow: Looking for platform: %s", m_platform_vendor);
-        auto it = std::find_if(plats.begin(), plats.end(), [&](cl::sycl::platform& elem) -> bool
-            { return elem.get_info<cl::sycl::info::platform::vendor>() == m_platform_vendor.toStdString(); }
+        CL_err = cl::Platform::get(&plats); checkCLerror();
+        auto it = std::find_if(plats.begin(), plats.end(), [&](cl::Platform& elem) -> bool
+            {return elem.getInfo<CL_PLATFORM_VENDOR>(&CL_err) == m_platform_vendor.toStdString();}
         );
         if(it != plats.end())
         {
@@ -126,7 +128,7 @@ bool InteropWindow::lookForDeviceType(cl::sycl::info::device_type devtype)
         {
             qDebug("InteropWindow: %s not found", m_platform_vendor);
             qDebug("InteropWindow: Possible platforms are:");
-            for(auto& platform : plats) {qDebug("InteropWindow:\t%s", platform.get_info<cl::sycl::info::platform::vendor>().c_str()); checkCLerror();}
+            for(auto& platform : plats) {qDebug("InteropWindow:\t%s", platform.getInfo<CL_PLATFORM_VENDOR>(&CL_err).c_str()); checkCLerror();}
         }
     }
 
@@ -134,7 +136,7 @@ bool InteropWindow::lookForDeviceType(cl::sycl::info::device_type devtype)
 }
 
 
-bool InteropWindow::lookForDeviceType(cl::sycl::platform& plat_in, cl::sycl::info::device_type devtype_in)
+bool InteropWindow::lookForDeviceType(cl::Platform& plat_in, cl_bitfield devtype_in)
 {
     bool found = false;
 
@@ -163,20 +165,19 @@ bool InteropWindow::lookForDeviceType(cl::sycl::platform& plat_in, cl::sycl::inf
     // Method 2 //
     
     // Attempt to create an interop context for all the platform devices one by one, and remove those that fail context creation
-    auto possible_devices = plat_in.get_devices();
+    std::vector<cl::Device> possible_devices;
 
-    std::remove_if(possible_devices.begin(),
-                   possible_devices.end(),
-                   [&properties](const cl::sycl::device& device)
+    CL_err = plat_in.getDevices(devtype_in, &possible_devices); checkCLerror();
+    std::remove_if(possible_devices.begin(), possible_devices.end(), [&properties](const cl::Device& device)
     {
         cl_int err = CL_SUCCESS;
         try
         {
-            cl::sycl::context(device, cl::sycl::info::gl_context_interop{ true });
+            cl::Context(device, properties.data(), nullptr, nullptr);
         }
-        catch (cl::sycl::exception e)
+        catch (cl::Error e)
         {
-            qInfo() << "InteropWindow: Cannot create interop context for device " << device.get_info<cl::sycl::info::device::name>().c_str();
+            err = e.err();
         }
         
         return err != CL_SUCCESS;
@@ -193,15 +194,13 @@ bool InteropWindow::lookForDeviceType(cl::sycl::platform& plat_in, cl::sycl::inf
 
         // Single-device init
         m_cl_devices.push_back(possible_devices.at(0));
-        m_cl_context = cl::sycl::context(m_cl_devices.at(0), cl::sycl::info::gl_context_interop{ true });
+        m_cl_context = cl::Context(possible_devices.at(0), properties.data(), nullptr, nullptr, &CL_err); checkCLerror();
 
-        std::transform(m_cl_devices.cbegin(),
-                       m_cl_devices.cend(),
-                       std::back_inserter(m_cl_commandqueues),
-                       [&](const cl::sycl::device& dev)
+        for (auto& dev : m_cl_devices)
         {
-            return cl::sycl::queue(m_cl_context, dev);
-        });
+            m_cl_commandqueues.push_back(cl::CommandQueue(m_cl_context, dev, 0, &CL_err));
+            checkCLerror();
+        }
 
         found = true;
     }
@@ -235,12 +234,12 @@ InteropWindow::gl_device InteropWindow::nativeGLdevice()
 }
 
 
-QVector<cl_context_properties> InteropWindow::interopCLcontextProps(const cl::sycl::platform& plat)
+QVector<cl_context_properties> InteropWindow::interopCLcontextProps(const cl::Platform& plat)
 {
     QVector<cl_context_properties> result;
 
     result.append(CL_CONTEXT_PLATFORM);
-    result.append(reinterpret_cast<cl_context_properties>(plat.get()));
+    result.append(reinterpret_cast<cl_context_properties>(plat()));
 #ifdef _WIN32
     result.append(CL_WGL_HDC_KHR);
     result.append(reinterpret_cast<cl_context_properties>(m_gl_device.first));
@@ -466,16 +465,38 @@ void InteropWindow::setDeviceType(cl_bitfield in) {m_device_type = in;}
 void InteropWindow::setPlatformVendor(QString in) {m_platform_vendor = in;}
 
 
-cl::Platform& InteropWindow::CLplatform() {return m_cl_platform;}
+cl::sycl::platform InteropWindow::CLplatform() { return cl::sycl::platform{ m_cl_platform() }; }
 
 
-std::vector<cl::Device>& InteropWindow::CLdevices() {return m_cl_devices;}
+std::vector<cl::sycl::device> InteropWindow::CLdevices()
+{
+    std::vector<cl::sycl::device> res;
+    res.reserve(m_cl_devices.size());
+
+    std::transform(m_cl_devices.cbegin(),
+                   m_cl_devices.cend(),
+                   std::back_inserter(res),
+                   [](const cl::Device& dev) { return dev(); });
+    
+    return res;
+}
 
 
-cl::Context& InteropWindow::CLcontext() {return m_cl_context;}
+cl::sycl::context InteropWindow::CLcontext() { return m_cl_context(); }
 
 
-std::vector<cl::CommandQueue>& InteropWindow::CLcommandqueues() {return m_cl_commandqueues;}
+std::vector<cl::sycl::queue> InteropWindow::CLcommandqueues()
+{
+    std::vector<cl::sycl::queue> res;
+    res.reserve(m_cl_commandqueues.size());
+
+    std::transform(m_cl_commandqueues.cbegin(),
+                   m_cl_commandqueues.cend(),
+                   std::back_inserter(res),
+                   [](const cl::CommandQueue& queue) { return queue(); });
+
+    return res;
+}
 
 
 const int InteropWindow::getActIPS() {return m_act_IPS;}
