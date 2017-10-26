@@ -34,13 +34,13 @@ target_link_libraries(${Target_Name} PUBLIC Qt5::Core Qt5::Gui Qt5::OpenGL Qt5::
 											OpenGL::GL)
 
 # Automatically invoke Qt tools on source files
-set_target_properties(${Target_Name} PROPERTIES CXX_STANDARD 11
+set_target_properties(${Target_Name} PROPERTIES CXX_STANDARD 14
                                                 CXX_STANDARD_REQUIRED ON
                                                 AUTOMOC ON)
 
 # Apply the ComputeCpp compiler to select source files (containing SYCL code)
 add_sycl_to_target(${Target_Name} ${CMAKE_CURRENT_BINARY_DIR}
-                   ${CMAKE_CURRENT_SOURCE_DIR}/src/NBody.cpp)
+                   ${CMAKE_CURRENT_SOURCE_DIR}/source/NBody.cpp)
 
 # Create source groups for IDE
 source_group ("Sources" FILES ${Sources})

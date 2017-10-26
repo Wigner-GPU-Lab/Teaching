@@ -37,13 +37,12 @@ void NBody::initializeGL()
 	// Initialize frame buffer
 	glFuncs->glViewport(0, 0, width(), height());   checkGLerror();
 	glFuncs->glClearColor(0.0, 0.0, 0.0, 1.0);      checkGLerror();
-	glFuncs->glDisable(GL_DEPTH_TEST);               checkGLerror();
+	glFuncs->glDisable(GL_DEPTH_TEST);              checkGLerror();
 	glFuncs->glDisable(GL_CULL_FACE);               checkGLerror();
 
 	// Initialize simulation data
 	qDebug("NBody: Allocating host-side memory");
 	pos_mass.reserve(particle_count);
-	forces.reserve(particle_count);
 
 	qDebug("NBody: Setting initial states");
 	using uni = std::uniform_real_distribution<real>;
@@ -61,8 +60,6 @@ void NBody::initializeGL()
 			          z_dist(prng),
 			          m_dist(prng) };
 	});
-
-	std::fill_n(std::back_inserter(velocity), particle_count, real4{ 0, 0, 0, 0 });
 
 	// Create shaders
 	qDebug("NBody: Building shaders...");
@@ -89,6 +86,7 @@ void NBody::initializeGL()
 		vbo->write(0, pos_mass.data(), (int)pos_mass.size() * sizeof(real4));
 		vbo->release();
 	}
+    pos_mass.clear();
 
 	qDebug("NBody: Done initializing OpenGL buffers");
 
@@ -115,7 +113,6 @@ void NBody::initializeGL()
 		return std::move(vao);
 	});
 
-
 	qDebug("NBody: Leaving initializeGL");
 }
 
@@ -124,74 +121,29 @@ void NBody::initializeCL()
 {
 	qDebug("NBody: Entering initializeCL");
 
-	// Load, compile and initialize
-	qDebug("NBody: Loading kernel code");
-	std::ifstream kernel_stream{ kernel_location + "/Kernels.cl" };
-	if (!kernel_stream.is_open()) qWarning("NBody: Cannot open kernel/Kernels.cl");
-
-	std::string kernel_string{ std::istreambuf_iterator<char>{kernel_stream}, std::istreambuf_iterator<char>{} };
-
-	qDebug("NBody: Optimizing kernel");
-	// Define compile-time constants, compute domains and types.
-	std::stringstream compile_options;
+    context = cl::sycl::context{ CLcontext()() };
+    device = cl::sycl::device{ CLdevices().at(dev_id)() };
+    compute_queue = cl::sycl::queue{ CLcommandqueues().at(dev_id)() };
 
 	qDebug("NBody: Querying device capabilities");
-	if (sizeof(real) == 8)
-	{
-		bool fp64 = CLdevices().at(dev_id).getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp64", 0) != std::string::npos;
-
-		if (!fp64) qWarning("NBody: Selected device does not support double precision");
-
-        compile_options << "-D USE_FP64 ";
-
-		compile_options << "-D real=" << "double ";
-		compile_options << "-D real4=" << "double4 ";
-	}
-	else
-	{
-		compile_options << "-cl-single-precision-constant" << " ";
-
-		compile_options << "-D real=" << "float ";
-		compile_options << "-D real4=" << "float4 ";
-	}
-
-    cl_khr_gl_event_supported = CLdevices().at(dev_id).getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_gl_event", 0) != std::string::npos;
-
-	qDebug("NBody: Building kernel");
-	qDebug((std::string("NBody: Build options are:") + compile_options.str()).c_str());
-	cl::Program prog{ CLcontext(), kernel_string };
-
-	try
-	{
-		prog.build({ CLdevices().at(dev_id) }, compile_options.str().c_str());
-	}
-	catch (cl::BuildError err)
-	{
-		qWarning((std::string{ "NBody: Build exception: " } + err.what()).c_str());
-
-		for (const auto& log : err.getBuildLog())
-		{
-			qWarning((std::string{ "NBody: Device " } + log.first.getInfo<CL_DEVICE_NAME>() + " has build log:\n").c_str());
-			qWarning(log.second.c_str());
-		}
-	}
-
-	step_kernel = cl::Kernel{ prog, "nbody_sim" };
-
-	gws = cl::NDRange{ particle_count };
-	lws = cl::NullRange;
+	cl_khr_gl_event_supported = device.get_info<cl::sycl::info::device::extensions>().find("cl_khr_gl_event", 0) != std::string::npos;
 
 	// Create Buffers
-	qDebug("NBody: Creating OpenCL buffer objects");
-	for (auto& velBuff : velBuffs)
-		velBuff = cl::Buffer{ CLcontext(), velocity.begin(), velocity.end(), false };
+	qDebug("NBody: Creating SYCL buffer objects");
+    for (auto& velBuff : velBuffs)
+    {
+        velBuff = cl::sycl::buffer<real4>{ cl::sycl::range<1>{particle_count} };
+
+        auto access = velBuff.get_access<cl::sycl::access::mode::write>();
+
+        std::fill_n(access.get_pointer(), access.get_count(), real4{ 0, 0, 0, 0 });
+    }
 
 	std::transform(vbos.cbegin(), vbos.cend(), posBuffs.begin(), [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
 	{
-		return cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() };
+        return cl::sycl::buffer<real4>{ cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() }(), compute_queue };
 	});
-
-	compute_queue = cl::CommandQueue{ CLcontext(), CLdevices().at(dev_id) };
+    compute_queue.wait_and_throw();
 
 	// Init bloat vars
 	std::transform(posBuffs.cbegin(), posBuffs.cend(), std::back_inserter(interop_resources), [](const cl::BufferGL& buf)
@@ -200,6 +152,34 @@ void NBody::initializeCL()
 	});
 
 	qDebug("NBody: Leaving initializeCL");
+}
+
+template <typename T, std::size_t J>
+struct unroll_step
+{
+    unroll_step(std::size_t i, T&& t)
+    {
+        unroll_step<T, J - 1>(i, std::forward<T>(t));
+        t(i + J);
+    }
+};
+
+template <typename T>
+struct unroll_step<T, (std::size_t)0>
+{
+    unroll_step(std::size_t i, T&& t) { t(i); }
+};
+
+template <std::size_t N, typename T>
+void unroll_loop(std::size_t first, std::size_t last, T&& t)
+{
+    std::size_t i = first;
+
+    for (; i + N < last; i += N)
+        unroll_step<T, N - 1>(i, std::forward<T>(t));
+
+    for (; i < last; ++i)
+        t(i);
 }
 
 // Override unimplemented InteropWindow function
@@ -217,22 +197,96 @@ void NBody::updateScene()
     //         
     //           See: opencl-1.2-extensions.pdf (Rev. 15. Chapter 9.8.5)
 
-	compute_queue.enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire_release[0]);
+    cl::CommandQueue{ compute_queue.get() }.enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire_release[0]);
+
+    compute_queue.submit([&](cl::sycl::handler& cgh)
+    {
+        auto pos =     posBuffs[Front].get_access<cl::sycl::access::mode::read>();
+        auto new_pos = posBuffs[Back].get_access<cl::sycl::access::mode::write>();
+        auto vel =     velBuffs[Front].get_access<cl::sycl::access::mode::read>();
+        auto new_vel = velBuffs[Back].get_access<cl::sycl::access::mode::write>();
+
+        cgh.parallel_for<NBody>(cl::sycl::range<1>{ particle_count }, [=](const cl::sycl::item<1> item)
+        {
+            real4 myPos = pos[item];
+            real4 acc = { 0, 0, 0, 0 };
+            real epsSqr = std::numeric_limits<real>::epsilon();
+            real deltaTime = real(0.005);
+
+            auto xyz = [](real4& vec) { return vec.swizzle<0, 1, 2>(); };
+            auto interact = [&](const size_t i)
+            {
+                real4 p = pos[i];
+                real4 r;
+                xyz(r) = xyz(p) - xyz(myPos);
+                real distSqr = r.x * r.x + r.y * r.y + r.z * r.z;
+
+                real invDist = 1.0 / sqrt(distSqr + epsSqr);
+                real invDistCube = invDist * invDist * invDist;
+                real s = p.w * invDistCube;
+
+                // accumulate effect of all particles
+                xyz(acc) += s * xyz(r);
+            };
+
+            // NOTE 1:
+            //
+            // This loop construct unrolls the outer loop in chunks of UNROLL_FACTOR
+            // up to a point that still fits into numBodies. After the unrolled part
+            // the remainder os particles are accounted for. (NOTE 1.1: the loop variable)
+            // 'j' is not used anywhere in the body. It's only used as a trivial
+            // unroll construct. NOTE 1.2: 'i' is left intact after the unrolled loops.
+            // The finishing loop picks up where the other left off.
+            //
+            // NOTE 2:
+            //
+            // epsSqr is used to omit self interaction checks alltogether by introducing
+            // a minimal skew in the deistance calculation. Thus, the almost infinity
+            // in invDistCube is suppressed by the ideally 0 distance calulated by
+            // r.xyz = p.xyz - myPos.xyz where the right-hand side hold identical values.
+            //
+            /*
+            size_t i = 0;
+            constexpr size_t UNROLL_FACTOR = 8;
+            for (; (i + UNROLL_FACTOR) < particle_count; )
+            {
+#pragma unroll UNROLL_FACTOR
+                for (size_t j = 0; j < UNROLL_FACTOR; j++, i++)
+                {
+                    interact(i);
+                }
+            }
+            for (; i < particle_count; i++)
+            {
+                interact(i);
+            }
+            */
+
+            constexpr size_t factor = 8; // loop unroll depth
+            unroll_loop<factor>(0, particle_count, interact);
+
+            real4 oldVel = vel[item];
+
+            // updated position and velocity
+            real4 newPos;
+            xyz(newPos) = xyz(myPos) + xyz(oldVel) * deltaTime + xyz(acc) * real(0.5) * deltaTime * deltaTime;
+            newPos.w = myPos.w;
+
+            real4 newVel;
+            xyz(newVel) = xyz(oldVel) + xyz(acc) * deltaTime;
+            newVel.w = oldVel.w;
+
+            // write to global memory
+            new_pos[item] = newPos;
+            new_vel[item] = newVel;
+        });
+    });
     
-	auto compute_event = kernel_functor{ step_kernel }(cl::EnqueueArgs{ compute_queue, gws },
-		                                               posBuffs[Front],
-		                                               posBuffs[Back],
-		                                               velBuffs[Front],
-		                                               velBuffs[Back],
-		                                               (cl_uint)particle_count,
-		                                               (real)0.005,
-		                                               (real)1.0);
-    
-	compute_queue.enqueueReleaseGLObjects(&interop_resources, nullptr, &acquire_release[1]);
+    cl::CommandQueue{ compute_queue.get() }.enqueueReleaseGLObjects(&interop_resources, nullptr, &acquire_release[1]);
     
     // Wait for all OpenCL commands to finish
     if (!cl_khr_gl_event_supported)
-        compute_queue.finish();
+        compute_queue.wait_and_throw();
     else
         acquire_release[1].wait();
     

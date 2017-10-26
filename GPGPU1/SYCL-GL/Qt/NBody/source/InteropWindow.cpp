@@ -465,38 +465,16 @@ void InteropWindow::setDeviceType(cl_bitfield in) {m_device_type = in;}
 void InteropWindow::setPlatformVendor(QString in) {m_platform_vendor = in;}
 
 
-cl::sycl::platform InteropWindow::CLplatform() { return cl::sycl::platform{ m_cl_platform() }; }
+cl::Platform& InteropWindow::CLplatform() {return m_cl_platform;}
 
 
-std::vector<cl::sycl::device> InteropWindow::CLdevices()
-{
-    std::vector<cl::sycl::device> res;
-    res.reserve(m_cl_devices.size());
-
-    std::transform(m_cl_devices.cbegin(),
-                   m_cl_devices.cend(),
-                   std::back_inserter(res),
-                   [](const cl::Device& dev) { return dev(); });
-    
-    return res;
-}
+std::vector<cl::Device>& InteropWindow::CLdevices() {return m_cl_devices;}
 
 
-cl::sycl::context InteropWindow::CLcontext() { return m_cl_context(); }
+cl::Context& InteropWindow::CLcontext() {return m_cl_context;}
 
 
-std::vector<cl::sycl::queue> InteropWindow::CLcommandqueues()
-{
-    std::vector<cl::sycl::queue> res;
-    res.reserve(m_cl_commandqueues.size());
-
-    std::transform(m_cl_commandqueues.cbegin(),
-                   m_cl_commandqueues.cend(),
-                   std::back_inserter(res),
-                   [](const cl::CommandQueue& queue) { return queue(); });
-
-    return res;
-}
+std::vector<cl::CommandQueue>& InteropWindow::CLcommandqueues() {return m_cl_commandqueues;}
 
 
 const int InteropWindow::getActIPS() {return m_act_IPS;}

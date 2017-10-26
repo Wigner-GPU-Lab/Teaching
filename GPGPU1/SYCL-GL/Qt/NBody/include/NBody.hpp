@@ -9,6 +9,9 @@
 // Base class include
 #include <InteropWindow.hpp>
 
+// SYCL include
+#include <CL/sycl.hpp>
+
 // Graphics utility includes
 #include <QMatrix4x4>
 #include <QVector>
@@ -24,7 +27,7 @@
 #include <algorithm>
 
 using real = cl_float;
-using real4 = cl_float4;
+using real4 = cl::sycl::float4;
 
 
 class NBody : public InteropWindow
@@ -44,14 +47,6 @@ public:
     virtual void resizeGL(QResizeEvent* event_in) override;
     virtual bool event(QEvent *event_in) override;
 
-	using kernel_functor = cl::KernelFunctor<cl::Buffer&,
-		                                     cl::Buffer&,
-		                                     cl::Buffer&,
-		                                     cl::Buffer&,
-		                                     cl_uint,
-		                                     real,
-		                                     real>;
-
 private:
 
 	enum Buffer
@@ -70,22 +65,20 @@ private:
 	// Host-side containers
 	std::vector<real4> pos_mass;
 	std::vector<real4> velocity;
-	std::vector<real> forces;
 
 	// OpenCL related variables
-	std::array<cl::BufferGL, 2> posBuffs;   // Simulation data buffers
-	std::array<cl::Buffer, 2> velBuffs;   // Simulation data buffers
+    cl::sycl::context context;              // Context
+    cl::sycl::device device;                // Device
+    cl::sycl::queue compute_queue;          // CommandQueue
+    bool cl_khr_gl_event_supported;
+
+	std::array<cl::sycl::buffer<real4>, 2> posBuffs;   // Simulation data buffers
+	std::array<cl::sycl::buffer<real4>, 2> velBuffs;   // Simulation data buffers
 	std::array<cl::Event, 2> acquire_release;
 
 	std::vector<cl::Memory> interop_resources;  // Bloat
 	std::vector<cl::Event> acquire_wait_list,   // Bloat
-	release_wait_list;   // Bloat
-
-	cl::NDRange gws, lws;                   // Global/local work-sizes
-	cl::Kernel step_kernel;                 // Kernel
-
-	cl::CommandQueue compute_queue;         // CommandQueue
-    bool cl_khr_gl_event_supported;
+	                       release_wait_list;   // Bloat
 
 	// OpenGL related variables
 	std::unique_ptr<QOpenGLShader> vs, fs;

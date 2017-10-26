@@ -31,9 +31,6 @@
 // OpenCL include
 #include <CL/cl2.hpp>
 
-// SYCL includes
-#include <CL/sycl.hpp>
-
 // Rename references to this dynamically linked function to avoid collision with static link version
 //#define clGetGLContextInfoKHR clGetGLContextInfoKHR_proc
 //static clGetGLContextInfoKHR_fn clGetGLContextInfoKHR;
@@ -81,10 +78,10 @@ protected:
     virtual void resizeGL(QResizeEvent* event_in) = 0;  // Function that handles render area resize
     virtual bool event(QEvent* event_in) override;      // Override of QWindow event handler function
 
-    cl::sycl::platform CLplatform();                    // Get associated variable
-    std::vector<cl::sycl::device> CLdevices();          // Get associated variable
-    cl::sycl::context CLcontext();                      // Get associated variable
-    std::vector<cl::sycl::queue> CLcommandqueues();     // Get associated variable
+    cl::Platform& CLplatform();                         // Get associated variable
+    std::vector<cl::Device>& CLdevices();               // Get associated variable
+    cl::Context& CLcontext();                           // Get associated variable
+    std::vector<cl::CommandQueue>& CLcommandqueues();   // Get associated variable
   
     QOpenGLFunctions_3_3_Core* glFuncs; // OpenGL functions Qt5.1
 
