@@ -286,7 +286,7 @@ void NBody::updateScene()
     
     // Wait for all OpenCL commands to finish
     if (!cl_khr_gl_event_supported)
-        compute_queue.wait_and_throw();
+        cl::finish();
     else
         acquire_release[1].wait();
     

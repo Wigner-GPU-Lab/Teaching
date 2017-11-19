@@ -80,17 +80,17 @@ option (BUILD_OPENGL "Build OpenGL samples" ON)
   endif (BUILD_OPENCL)
 
   if (BUILD_SYCL)
-    add_subdirectory (SYCL)
+    #add_subdirectory (SYCL)
   endif (BUILD_SYCL)
 
   if (BUILD_OPENGL)
     add_subdirectory (OpenGL)
   endif (BUILD_OPENGL)
 
-  if (BUILD_OPENGL AND BUILD_OPENCL)
+  if (BUILD_OPENCL AND BUILD_OPENGL)
     add_subdirectory (OpenCL-GL)
-  endif (BUILD_OPENGL AND BUILD_OPENCL)
+  endif (BUILD_OPENCL AND BUILD_OPENGL)
 
-  if (BUILD_SYCL AND BUILD_OPENCL)
+  if (BUILD_SYCL AND BUILD_OPENGL)
     add_subdirectory (SYCL-GL)
-  endif (BUILD_SYCL AND BUILD_OPENCL)
+  endif (BUILD_SYCL AND BUILD_OPENGL)
