@@ -245,23 +245,6 @@ void NBody::updateScene()
             // in invDistCube is suppressed by the ideally 0 distance calulated by
             // r.xyz = p.xyz - myPos.xyz where the right-hand side hold identical values.
             //
-            /*
-            size_t i = 0;
-            constexpr size_t UNROLL_FACTOR = 8;
-            for (; (i + UNROLL_FACTOR) < particle_count; )
-            {
-#pragma unroll UNROLL_FACTOR
-                for (size_t j = 0; j < UNROLL_FACTOR; j++, i++)
-                {
-                    interact(i);
-                }
-            }
-            for (; i < particle_count; i++)
-            {
-                interact(i);
-            }
-            */
-
             constexpr size_t factor = 8; // loop unroll depth
             unroll_loop<factor>(0, particle_count, interact);
 

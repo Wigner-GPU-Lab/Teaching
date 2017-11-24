@@ -30,9 +30,11 @@ int main(int argc, char *argv[])
 	NBody nbody;
 	nbody.setDeviceType(CL_DEVICE_TYPE_GPU);
 	nbody.setFormat(my_surfaceformat);
-	nbody.setVisibility(QWindow::Maximized);
+	nbody.setVisibility(QWindow::AutomaticVisibility);
+    nbody.setWidth(1280);
+    nbody.setHeight(720);
     nbody.setMaxFPS(60);
-    //nbody.setMaxIPS(10);
+    nbody.setMaxIPS(60);
 	nbody.setAnimating(true);
 
     return app.exec();
