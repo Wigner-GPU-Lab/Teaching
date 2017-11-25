@@ -2,8 +2,8 @@
 
 // Qt5 includes
 #include <QtGui>
-#include <QtGui/5.9.0/QtGui/qpa/qplatformnativeinterface.h>
-#include <QtGui/5.9.0/QtGui/qpa/qplatformopenglcontext.h>
+#include <QtGui/5.9.2/QtGui/qpa/qplatformnativeinterface.h>
+#include <QtGui/5.9.2/QtGui/qpa/qplatformopenglcontext.h>
 #include <QOpenGLFunctions_3_3_Core>
 
 #ifdef __linux__

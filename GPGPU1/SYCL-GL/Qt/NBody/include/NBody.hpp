@@ -3,6 +3,9 @@
 // NBody configure
 #include <NBody-Config.hpp>
 
+// NBody includes
+#include <NBodyStep.hpp>
+
 // C++ behavioral defines
 #define _USE_MATH_DEFINES
 
