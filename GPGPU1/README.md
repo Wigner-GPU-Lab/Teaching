@@ -48,4 +48,4 @@ _Should you be confused on how to use CMake, please consult our CMake tutorial [
 
 Platform-specific build guidelines can be found in the docs:
 * [Windows](./docs/Windows.md)
-* [Ubuntu 16.04](./docs/Windows.md)
+* [Ubuntu 16.04](./docs/Ubuntu.md)
