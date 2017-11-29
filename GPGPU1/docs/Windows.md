@@ -125,16 +125,44 @@ Placing the MSVC compiler onto the PATH is not enough to make the compiler work.
 
 If you let the LLVM installer add it to the PATH, CMake will always find it automatically. Otherwise, it must be instructed via the `-DCMAKE_C_COMPILER=<path_to_clang.exe>` and `-DCMAKE_CXX_COMPILER=<path_to_clang++.exe>` respectively.
 
+### Visual Studio Code
+
+To build using Visual Studio Code, we recommend using [Microsofts C/C++ extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) in tandem with [vector-of-bools CMake Tools](https://marketplace.visualstudio.com/items?itemName=vector-of-bool.cmake-tools) and [twxs' CMake](https://marketplace.visualstudio.com/items?itemName=twxs.cmake) extension. In the File context menu, select _Preferences_ and _Settings_. Add the following entries to
+
+* the user specific json, in case you don't want to repeat this setup for all projects in the future (Vcpkg related entries are prime candidates for user settings)
+* the workspace specific json, if you want these variables to persist only for the given project folder (OpenCL and ComputeCpp)
+
+```json
+{
+    "cmake.configureArgs": [
+        // Vcpkg entries
+        "-DCMAKE_TOOLCHAIN_FILE=<vcpkg_clone_root>/scripts/buildsystems/vcpkg.cmake",
+        "-DVCPKG_TARGET_TRIPLET=x64-windows-static",
+        // OpenCL SDK Light entries for FindOpenCL.cmake
+        "-DOpenCL_INCLUDE_DIR=C:/Kellekek/AMD/OpenCL SDK Light/include",
+        "-DOpenCL_LIBRARY=C:/Kellekek/AMD/OpenCL SDK Light/lib/x86_64/opencl.lib",
+        // ComputeCpp entries for FindComputeCpp.cmake
+        "-DCOMPUTECPP_PACKAGE_ROOT_DIR=C:/Kellekek/Codeplay/ComputeCpp/0.3.3"
+    ]
+}
+```
+
+_NOTE 1: this sample assumes you used Vcpkg to install everything that's possible to do so._
+
+_NOTE 2: When using MSVC, you can select build environment on the bottom status bar once CMake Tools has initialized (might take a few seconds). This will invoke vcvars***.bat in the process where CMake commands are run._
+
 ### Visual Studio 2017
 
 To build using Visual Studio 15, use the _Open Folder_ capability. Point Visual Studio to the root directory of the samples. In the CMake context menu, select _Change CMake Settings_ and modify the .json file to look something like this. (Modify in trivial places to match your installation layouts.)
 
 ```json
-"configurations": [
+{
+    "configurations": [
         {
             "name": "x64-Debug",
-            "generator": "Visual Studio 15 2017 Win64",
-            "configurationType" : "Debug",
+            "configurationType": "Debug",
+            "generator": "Ninja",
+            "inheritEnvironments": [ "msvc_x64_x64" ],
             "buildRoot":  "${env.LOCALAPPDATA}\\CMakeBuild\\${workspaceHash}\\build\\${name}",
             "cmakeCommandArgs": "",
             "variables": [
@@ -155,6 +183,15 @@ To build using Visual Studio 15, use the _Open Folder_ capability. Point Visual 
                     "value": "<path_to_ComputeCpp_install_root>"
                 }
             ],
-            "buildCommandArgs": "-m -v:minimal"
+            "buildCommandArgs": "-j${env.NUMBER_OF_PROCESSORS}"
+        },
+        {
+            "name": "x64-Release",
+            "configurationType": "Release",
+            // ...
         }
+    ]
+}
 ```
+
+_NOTE: this sample assumes all dependencies were installed manually and no Vcpkg was involved._
