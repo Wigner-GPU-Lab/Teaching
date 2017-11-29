@@ -49,21 +49,3 @@ _Should you be confused on how to use CMake, please consult our CMake tutorial [
 Platform-specific build guidelines can be found in the docs:
 * [Windows](./docs/Windows.md)
 * [Ubuntu 16.04](./docs/Windows.md)
-
-
-
-### Ubuntu 16.04
-#### Installation
-Stock Ubuntu packages are sufficient to building the samples
-```bash
-sudo apt install cmake \
-                 ocl-icd-opencl-dev clinfo libclfft-dev libclblas-dev \
-                 libsfml-dev libglew-dev libglm-dev \
-                 libqt5opengl5-dev
-```
-#### Building
-To build the samples, navigate to the directory where you would like to build the samples and type:
-```bash
-cmake -DCMAKE_MODULE_PATH=/usr/share/SFML/cmake/Modules/ \
-      <path_to_samples_root>
-```
