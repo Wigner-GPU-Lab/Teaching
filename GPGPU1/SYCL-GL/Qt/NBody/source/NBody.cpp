@@ -1,9 +1,12 @@
 #include <NBody.hpp>
 
 
-NBody::NBody(QWindow* parent)
-    : InteropWindow(parent)
-	, particle_count(8192u)
+NBody::NBody(std::size_t plat_id,
+	         cl_bitfield dev_type,
+	         std::size_t particle_count,
+	         QWindow *parent)
+    : InteropWindow(plat_id, dev_type, parent)
+	, particle_count(particle_count)
 	, x_abs_range(192.f)
 	, y_abs_range(128.f)
 	, z_abs_range(32.f)

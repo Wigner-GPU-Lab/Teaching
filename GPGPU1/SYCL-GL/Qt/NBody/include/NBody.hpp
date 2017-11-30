@@ -39,7 +39,10 @@ class NBody : public InteropWindow
 
 public:
 
-    explicit NBody(QWindow *parent = 0);
+    explicit NBody(std::size_t plat_id,
+	               cl_bitfield dev_type,
+	               std::size_t particle_count,
+	               QWindow *parent = 0);
 	~NBody() = default;
 
     virtual void initializeGL() override;

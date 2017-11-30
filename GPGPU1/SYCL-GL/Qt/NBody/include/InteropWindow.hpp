@@ -2,16 +2,16 @@
 
 // Qt5 includes
 #include <QtGui>
-#include <QtGui/5.9.2/QtGui/qpa/qplatformnativeinterface.h>
-#include <QtGui/5.9.2/QtGui/qpa/qplatformopenglcontext.h>
 #include <QOpenGLFunctions_3_3_Core>
+#include <qpa/qplatformnativeinterface.h>
+
+#ifdef _WIN32
+#include <QtPlatformHeaders/QWGLNativeContext>
+#endif
 
 #ifdef __linux__
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xresource.h>
-#include <GL/glx.h>
 #undef Bool
+#include <QtPlatformHeaders/QGLXNativeContext>
 #endif
 
 // Logging
@@ -31,12 +31,9 @@
 // OpenCL include
 #include <CL/cl2.hpp>
 
-// Rename references to this dynamically linked function to avoid collision with static link version
-//#define clGetGLContextInfoKHR clGetGLContextInfoKHR_proc
-//static clGetGLContextInfoKHR_fn clGetGLContextInfoKHR;
-
 #define QTIMER
 //#define STDTIMER
+
 
 class InteropWindow : public QWindow
 {
@@ -44,14 +41,9 @@ class InteropWindow : public QWindow
 
 public:
 
-#ifdef _WIN32
-    typedef QPair<HDC, HGLRC> gl_device;           // Windows-specific OpenGL device handles
-#endif
-#ifdef __linux__
-    typedef QPair<Display*, GLXContext> gl_device; // Linux-specific OpenGL device handles
-#endif
-
-    explicit InteropWindow(QWindow *parent = 0);
+    explicit InteropWindow(std::size_t plat_id = 0,
+                           cl_bitfield dev_type = CL_DEVICE_TYPE_DEFAULT,
+                           QWindow *parent = 0);
     ~InteropWindow();
 
 public slots:
@@ -64,8 +56,10 @@ public slots:
                                         // (NOTE: When both IPS and FPS are limited the application will burn the object's thread!)
 
     void setDeviceType(cl_bitfield);    // Set device type to be used
-    void setPlatformVendor(QString);    // Set implementation vendor to be used
+    void setPlatformId(std::size_t);    // Set implementation vendor to be used
+
 protected:
+
     cl_int CL_err;                      // Can be used to store OpenCL errors
     GLint GL_err;                       // Can be used to store OpenGL errors
 
@@ -105,7 +99,7 @@ private:
     int m_act_IPS, m_act_FPS;           // Nomen est omen
 
     cl_bitfield m_device_type;          // Device type to be used
-    QString m_platform_vendor;          // Implementation vendor to be used
+    std::size_t m_platform_id;          // Implementation vendor to be used
 #ifdef QTIMER
     QElapsedTimer m_IPS_limiter, m_FPS_limiter; // Limiters
 #endif
@@ -114,9 +108,7 @@ private:
 #endif
 
     // Resource handles
-    QPlatformNativeInterface* plat_int;     // Platform native interface to obtain OS-spcific handles
-
-    gl_device m_gl_device;              // Native OpenGL device handles
+    QPlatformNativeInterface* plat_int;   // Platform native interface to obtain OS-spcific handles
 
     QOpenGLContext* m_gl_context;                               // Context used by the window
     QOpenGLContext* m_painter_context;                          // Painter context
@@ -138,7 +130,6 @@ private:
     bool lookForDeviceType(cl_bitfield devtype);                // Helper function to enumerates interop capable devices of given type
     bool lookForDeviceType(cl::Platform&, cl_bitfield);         // Helper function to enumerates interop capable devices of given type on a certain platform
 
-    gl_device nativeGLdevice();                                 // Obtain native OpenCL device handles
     QVector<cl_context_properties> interopCLcontextProps(const cl::Platform& plat);          // Context properties of interop context
 
     bool detectFormatMismatch(QSurfaceFormat& left, QSurfaceFormat& right);

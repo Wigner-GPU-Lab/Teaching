@@ -21,8 +21,6 @@ NBody::NBody(std::size_t plat_id,
     , imageDrawn(false)
     , needMatrixReset(true)
 {
-    setPlatformId(plat_id);
-    setDeviceType(dev_type);
 }
 
 

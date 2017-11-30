@@ -29,7 +29,8 @@ add_executable(${Target_Name} ${Sources} ${Headers} ${Shaders})
 
 # Target include directories
 target_include_directories (${Target_Name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-                                                  ${CMAKE_CURRENT_BINARY_DIR}/include)
+                                                  ${CMAKE_CURRENT_BINARY_DIR}/include
+                                                  ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
 
 # Target link directives
 target_link_libraries(${Target_Name} PUBLIC Qt5::Core Qt5::Gui Qt5::OpenGL Qt5::WinMain

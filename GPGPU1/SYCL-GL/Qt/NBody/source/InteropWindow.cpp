@@ -1,6 +1,9 @@
 #include <InteropWindow.hpp>
 
-InteropWindow::InteropWindow(QWindow *parent)
+// C++ includes
+#include <limits>
+
+InteropWindow::InteropWindow(std::size_t plat_id, cl_bitfield dev_type, QWindow *parent)
     : QWindow(parent)
     , CL_err(0)
     , GL_err(0)
@@ -13,10 +16,10 @@ InteropWindow::InteropWindow(QWindow *parent)
     , m_max_FPS(INT_MAX)
     , m_act_IPS(0)
     , m_act_FPS(0)
-    , m_device_type(CL_DEVICE_TYPE_DEFAULT)
-    , m_platform_vendor()
-    , m_gl_context(0)
-    , m_gl_paintdevice(0)
+    , m_device_type(dev_type)
+    , m_platform_id(plat_id)
+    , m_gl_context(nullptr)
+    , m_gl_paintdevice(nullptr)
 {
     qDebug("InteropWindow: Entering constructor");
     setSurfaceType(QWindow::OpenGLSurface);
@@ -35,8 +38,8 @@ InteropWindow::InteropWindow(QWindow *parent)
 
 InteropWindow::~InteropWindow()
 {
-    if(m_gl_context!=0) delete m_gl_context;
-    if(m_gl_paintdevice!=0) delete m_gl_paintdevice;
+    delete m_gl_context;
+    delete m_gl_paintdevice;
 }
 
 
@@ -79,7 +82,6 @@ void InteropWindow::createGLcontext_helper()
 void InteropWindow::createCLcontext_helper()
 {
     qDebug("InteropWindow: Entering createCLcontext_helper");
-    m_gl_device = nativeGLdevice();
     
     if(!lookForDeviceType(m_device_type)) qFatal("InteropWindow: No interoperable device could be found!");
     else
@@ -102,11 +104,12 @@ bool InteropWindow::lookForDeviceType(cl_bitfield devtype)
     bool dev_found = false;
 
     std::vector<cl::Platform> plats;
+    cl::Platform::get(&plats);
 
-    if(m_platform_vendor.isNull())
+
+    if(m_platform_id == std::numeric_limits<std::size_t>::max())
     {
         qDebug("InteropWindow: No platform preference. Choosing based on device preference");
-        CL_err = cl::Platform::get(&plats); checkCLerror();
         for(auto& platform : plats)
         {
             dev_found = lookForDeviceType(platform, devtype);
@@ -115,18 +118,16 @@ bool InteropWindow::lookForDeviceType(cl_bitfield devtype)
     }
     else
     {
-        qDebug("InteropWindow: Looking for platform: %s", m_platform_vendor);
-        CL_err = cl::Platform::get(&plats); checkCLerror();
-        auto it = std::find_if(plats.begin(), plats.end(), [&](cl::Platform& elem) -> bool
-            {return elem.getInfo<CL_PLATFORM_VENDOR>(&CL_err) == m_platform_vendor.toStdString();}
-        );
-        if(it != plats.end())
+        qDebug("InteropWindow: Looking for platform id: %d", m_platform_id);
+        if(m_platform_id < plats.size())
         {
-            dev_found = lookForDeviceType(*it, devtype);
+            auto platform = plats.at(m_platform_id);
+            dev_found = lookForDeviceType(platform, devtype);
         }
         else
         {
-            qDebug("InteropWindow: %s not found", m_platform_vendor);
+            qDebug("InteropWindow: Platform id %d not found", m_platform_id);
+            qDebug("InteropWindow: Number of platforms: %d", plats.size());
             qDebug("InteropWindow: Possible platforms are:");
             for(auto& platform : plats) {qDebug("InteropWindow:\t%s", platform.getInfo<CL_PLATFORM_VENDOR>(&CL_err).c_str()); checkCLerror();}
         }
@@ -209,31 +210,6 @@ bool InteropWindow::lookForDeviceType(cl::Platform& plat_in, cl_bitfield devtype
 }
 
 
-InteropWindow::gl_device InteropWindow::nativeGLdevice()
-{
-#ifdef _WIN32
-    // Native way
-    QPair<HDC, HGLRC> m_gl_device_native;
-    m_gl_device_native.first = wglGetCurrentDC();
-    m_gl_device_native.second = wglGetCurrentContext();
-
-    qDebug() << "InteropWindow: Window on screen " << this->screen()->name() << " has native HDC = " << m_gl_device_native.first << " and HGLRC = " << m_gl_device_native.second;
-
-    return m_gl_device_native;
-#endif
-#ifdef __linux__
-    // Native way
-    QPair<Display*, GLXContext> m_gl_device_native;
-    m_gl_device_native.first = glXGetCurrentDisplay();
-    m_gl_device_native.second = glXGetCurrentContext();
-
-    qDebug() << "InteropWindow: Window on screen " << this->screen()->name() << " has native Screen = " << m_gl_device_native.first << " and GLXContext = " << m_gl_device_native.second;
-
-    return m_gl_device_native;
-#endif
-}
-
-
 QVector<cl_context_properties> InteropWindow::interopCLcontextProps(const cl::Platform& plat)
 {
     QVector<cl_context_properties> result;
@@ -241,17 +217,17 @@ QVector<cl_context_properties> InteropWindow::interopCLcontextProps(const cl::Pl
     result.append(CL_CONTEXT_PLATFORM);
     result.append(reinterpret_cast<cl_context_properties>(plat()));
 #ifdef _WIN32
+    QWGLNativeContext native_context = m_gl_context->nativeHandle().value<QWGLNativeContext>();
     result.append(CL_WGL_HDC_KHR);
-    result.append(reinterpret_cast<cl_context_properties>(m_gl_device.first));
-    result.append(CL_GL_CONTEXT_KHR);
-    result.append(reinterpret_cast<cl_context_properties>(m_gl_device.second));
+    result.append(reinterpret_cast<cl_context_properties>(GetDC(reinterpret_cast<HWND>(plat_int->nativeResourceForWindow("handle", this)))));
 #endif
 #ifdef __linux__
+    QGLXNativeContext native_context = m_gl_context->nativeHandle().value<QGLXNativeContext>();
     result.append(CL_GLX_DISPLAY_KHR);
-    result.append(reinterpret_cast<cl_context_properties>(m_gl_device.first));
-    result.append(CL_GL_CONTEXT_KHR);
-    result.append(reinterpret_cast<cl_context_properties>(m_gl_device.second));
+    result.append(reinterpret_cast<cl_context_properties>(native_context.display()));
 #endif
+    result.append(CL_GL_CONTEXT_KHR);
+    result.append(reinterpret_cast<cl_context_properties>(native_context.context()));
     result.append(0);
 
     return result;
@@ -462,7 +438,7 @@ void InteropWindow::setMaxFPS(int FPS) {m_max_FPS = FPS;}
 void InteropWindow::setDeviceType(cl_bitfield in) {m_device_type = in;}
 
 
-void InteropWindow::setPlatformVendor(QString in) {m_platform_vendor = in;}
+void InteropWindow::setPlatformId(std::size_t in) {m_platform_id = in;}
 
 
 cl::Platform& InteropWindow::CLplatform() {return m_cl_platform;}
