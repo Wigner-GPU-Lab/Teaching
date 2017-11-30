@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     nbody.setWidth(1280);
     nbody.setHeight(720);
     nbody.setMaxFPS(60);
-    nbody.setMaxIPS(60);
+    //nbody.setMaxIPS(60);
 	nbody.setAnimating(true);
 
     return app.exec();

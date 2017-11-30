@@ -3,8 +3,6 @@
 // Qt5 includes
 #include <QtGui>
 #include <QOpenGLFunctions_3_3_Core>
-//#include <QtGui/5.9.2/QtGui/qpa/qplatformnativeinterface.h>
-//#include <QtGui/5.9.2/QtGui/qpa/qplatformopenglcontext.h>
 #include <qpa/qplatformnativeinterface.h>
 
 #ifdef _WIN32
@@ -15,14 +13,6 @@
 #undef Bool
 #include <QtPlatformHeaders/QGLXNativeContext>
 #endif
-
-//#ifdef __linux__
-//#include <X11/Xlib.h>
-//#include <X11/Xutil.h>
-//#include <X11/Xresource.h>
-//#include <GL/glx.h>
-//#undef Bool
-//#endif
 
 // Logging
 #include <QMessageLogger>
@@ -41,25 +31,15 @@
 // OpenCL include
 #include <CL/cl2.hpp>
 
-// Rename references to this dynamically linked function to avoid collision with static link version
-//#define clGetGLContextInfoKHR clGetGLContextInfoKHR_proc
-//static clGetGLContextInfoKHR_fn clGetGLContextInfoKHR;
-
 #define QTIMER
 //#define STDTIMER
+
 
 class InteropWindow : public QWindow
 {
     Q_OBJECT
 
 public:
-
-//#ifdef _WIN32
-//    typedef QPair<HDC, HGLRC> gl_device;           // Windows-specific OpenGL device handles
-//#endif
-//#ifdef __linux__
-//    typedef QPair<Display*, GLXContext> gl_device; // Linux-specific OpenGL device handles
-//#endif
 
     explicit InteropWindow(QWindow *parent = 0);
     ~InteropWindow();
@@ -126,8 +106,6 @@ private:
     // Resource handles
     QPlatformNativeInterface* plat_int;   // Platform native interface to obtain OS-spcific handles
 
-    //gl_device m_gl_device;              // Native OpenGL device handles
-
     QOpenGLContext* m_gl_context;                               // Context used by the window
     QOpenGLContext* m_painter_context;                          // Painter context
     QOpenGLPaintDevice* m_gl_paintdevice;                       // Paint Engine used by the window
@@ -148,7 +126,6 @@ private:
     bool lookForDeviceType(cl_bitfield devtype);                // Helper function to enumerates interop capable devices of given type
     bool lookForDeviceType(cl::Platform&, cl_bitfield);         // Helper function to enumerates interop capable devices of given type on a certain platform
 
-    //QVariant nativeGLdevice();                                  // Obtain native OpenCL device handles
     QVector<cl_context_properties> interopCLcontextProps(const cl::Platform& plat);          // Context properties of interop context
 
     bool detectFormatMismatch(QSurfaceFormat& left, QSurfaceFormat& right);

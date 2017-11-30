@@ -79,7 +79,6 @@ void InteropWindow::createGLcontext_helper()
 void InteropWindow::createCLcontext_helper()
 {
     qDebug("InteropWindow: Entering createCLcontext_helper");
-    //m_gl_device = nativeGLdevice();
     
     if(!lookForDeviceType(m_device_type)) qFatal("InteropWindow: No interoperable device could be found!");
     else
@@ -209,31 +208,6 @@ bool InteropWindow::lookForDeviceType(cl::Platform& plat_in, cl_bitfield devtype
 }
 
 
-//InteropWindow::QVariant InteropWindow::nativeGLdevice()
-//{
-//#ifdef _WIN32
-//    // Native way
-//    QPair<HDC, HGLRC> m_gl_device_native;
-//    m_gl_device_native.first = wglGetCurrentDC();
-//    m_gl_device_native.second = wglGetCurrentContext();
-//
-//    qDebug() << "InteropWindow: Window on screen " << this->screen()->name() << " has native HDC = " << m_gl_device_native.first << " and HGLRC = " << m_gl_device_native.second;
-//
-//    return m_gl_device_native;
-//#endif
-//#ifdef __linux__
-//    // Native way
-//    QPair<Display*, GLXContext> m_gl_device_native;
-//    m_gl_device_native.first = glXGetCurrentDisplay();
-//    m_gl_device_native.second = glXGetCurrentContext();
-//
-//    qDebug() << "InteropWindow: Window on screen " << this->screen()->name() << " has native Screen = " << m_gl_device_native.first << " and GLXContext = " << m_gl_device_native.second;
-//
-//    return m_gl_device_native;
-//#endif
-//}
-
-
 QVector<cl_context_properties> InteropWindow::interopCLcontextProps(const cl::Platform& plat)
 {
     QVector<cl_context_properties> result;
@@ -243,9 +217,6 @@ QVector<cl_context_properties> InteropWindow::interopCLcontextProps(const cl::Pl
 #ifdef _WIN32
     QWGLNativeContext native_context = m_gl_context->nativeHandle().value<QWGLNativeContext>();
     result.append(CL_WGL_HDC_KHR);
-    //auto hwnd = reinterpret_cast<HWND>(plat_int->nativeResourceForWindow("handle", this));
-    //auto hdc = GetDC(hwnd);
-    //result.append(reinterpret_cast<cl_context_properties>(hdc));
     result.append(reinterpret_cast<cl_context_properties>(GetDC(reinterpret_cast<HWND>(plat_int->nativeResourceForWindow("handle", this)))));
 #endif
 #ifdef __linux__
