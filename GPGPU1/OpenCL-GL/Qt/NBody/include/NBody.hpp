@@ -33,7 +33,10 @@ class NBody : public InteropWindow
 
 public:
 
-    explicit NBody(QWindow *parent = 0);
+    explicit NBody(std::size_t plat_id,
+	               cl_bitfield dev_type,
+	               std::size_t particle_count,
+	               QWindow *parent = 0);
 	~NBody() = default;
 
     virtual void initializeGL() override;
@@ -43,6 +46,8 @@ public:
     virtual void render(QPainter* painter) override;
     virtual void resizeGL(QResizeEvent* event_in) override;
     virtual bool event(QEvent *event_in) override;
+
+	void setParticleCount(std::size_t);
 
 	using kernel_functor = cl::KernelFunctor<cl::Buffer&,
 		                                     cl::Buffer&,

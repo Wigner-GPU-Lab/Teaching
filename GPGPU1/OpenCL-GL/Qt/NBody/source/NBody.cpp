@@ -1,9 +1,12 @@
 #include <NBody.hpp>
 
 
-NBody::NBody(QWindow* parent)
-    : InteropWindow(parent)
-	, particle_count(8192u)
+NBody::NBody(std::size_t plat_id,
+	         cl_bitfield dev_type,
+	         std::size_t particle_count,
+	         QWindow *parent)
+    : InteropWindow(plat_id, dev_type, parent)
+	, particle_count(particle_count)
 	, x_abs_range(192.f)
 	, y_abs_range(128.f)
 	, z_abs_range(32.f)
@@ -18,6 +21,8 @@ NBody::NBody(QWindow* parent)
     , imageDrawn(false)
     , needMatrixReset(true)
 {
+    setPlatformId(plat_id);
+    setDeviceType(dev_type);
 }
 
 
@@ -339,6 +344,8 @@ bool NBody::event(QEvent *event_in)
         return InteropWindow::event(event_in);
     }
 }
+
+void NBody::setParticleCount(std::size_t in) { particle_count = in; }
 
 // Input handler function
 void NBody::mouseDrag(QMouseEvent* event_in)

@@ -1,6 +1,9 @@
 #include <InteropWindow.hpp>
 
-InteropWindow::InteropWindow(QWindow *parent)
+// C++ includes
+#include <limits>
+
+InteropWindow::InteropWindow(std::size_t plat_id, cl_bitfield dev_type, QWindow *parent)
     : QWindow(parent)
     , CL_err(0)
     , GL_err(0)
@@ -13,8 +16,8 @@ InteropWindow::InteropWindow(QWindow *parent)
     , m_max_FPS(INT_MAX)
     , m_act_IPS(0)
     , m_act_FPS(0)
-    , m_device_type(CL_DEVICE_TYPE_DEFAULT)
-    , m_platform_vendor()
+    , m_device_type(dev_type)
+    , m_platform_id(plat_id)
     , m_gl_context(nullptr)
     , m_gl_paintdevice(nullptr)
 {
@@ -101,11 +104,12 @@ bool InteropWindow::lookForDeviceType(cl_bitfield devtype)
     bool dev_found = false;
 
     std::vector<cl::Platform> plats;
+    cl::Platform::get(&plats);
 
-    if(m_platform_vendor.isNull())
+
+    if(m_platform_id == std::numeric_limits<std::size_t>::max())
     {
         qDebug("InteropWindow: No platform preference. Choosing based on device preference");
-        CL_err = cl::Platform::get(&plats); checkCLerror();
         for(auto& platform : plats)
         {
             dev_found = lookForDeviceType(platform, devtype);
@@ -114,18 +118,16 @@ bool InteropWindow::lookForDeviceType(cl_bitfield devtype)
     }
     else
     {
-        qDebug("InteropWindow: Looking for platform: %s", m_platform_vendor);
-        CL_err = cl::Platform::get(&plats); checkCLerror();
-        auto it = std::find_if(plats.begin(), plats.end(), [&](cl::Platform& elem) -> bool
-            {return elem.getInfo<CL_PLATFORM_VENDOR>(&CL_err) == m_platform_vendor.toStdString();}
-        );
-        if(it != plats.end())
+        qDebug("InteropWindow: Looking for platform id: %d", m_platform_id);
+        if(m_platform_id < plats.size())
         {
-            dev_found = lookForDeviceType(*it, devtype);
+            auto platform = plats.at(m_platform_id);
+            dev_found = lookForDeviceType(platform, devtype);
         }
         else
         {
-            qDebug("InteropWindow: %s not found", m_platform_vendor);
+            qDebug("InteropWindow: Platform id %d not found", m_platform_id);
+            qDebug("InteropWindow: Number of platforms: %d", plats.size());
             qDebug("InteropWindow: Possible platforms are:");
             for(auto& platform : plats) {qDebug("InteropWindow:\t%s", platform.getInfo<CL_PLATFORM_VENDOR>(&CL_err).c_str()); checkCLerror();}
         }
@@ -436,7 +438,7 @@ void InteropWindow::setMaxFPS(int FPS) {m_max_FPS = FPS;}
 void InteropWindow::setDeviceType(cl_bitfield in) {m_device_type = in;}
 
 
-void InteropWindow::setPlatformVendor(QString in) {m_platform_vendor = in;}
+void InteropWindow::setPlatformId(std::size_t in) {m_platform_id = in;}
 
 
 cl::Platform& InteropWindow::CLplatform() {return m_cl_platform;}

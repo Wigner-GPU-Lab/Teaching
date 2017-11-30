@@ -41,7 +41,9 @@ class InteropWindow : public QWindow
 
 public:
 
-    explicit InteropWindow(QWindow *parent = 0);
+    explicit InteropWindow(std::size_t plat_id = 0,
+                           cl_bitfield dev_type = CL_DEVICE_TYPE_DEFAULT,
+                           QWindow *parent = 0);
     ~InteropWindow();
 
 public slots:
@@ -54,8 +56,10 @@ public slots:
                                         // (NOTE: When both IPS and FPS are limited the application will burn the object's thread!)
 
     void setDeviceType(cl_bitfield);    // Set device type to be used
-    void setPlatformVendor(QString);    // Set implementation vendor to be used
+    void setPlatformId(std::size_t);    // Set implementation vendor to be used
+
 protected:
+
     cl_int CL_err;                      // Can be used to store OpenCL errors
     GLint GL_err;                       // Can be used to store OpenGL errors
 
@@ -95,7 +99,7 @@ private:
     int m_act_IPS, m_act_FPS;           // Nomen est omen
 
     cl_bitfield m_device_type;          // Device type to be used
-    QString m_platform_vendor;          // Implementation vendor to be used
+    std::size_t m_platform_id;          // Implementation vendor to be used
 #ifdef QTIMER
     QElapsedTimer m_IPS_limiter, m_FPS_limiter; // Limiters
 #endif
