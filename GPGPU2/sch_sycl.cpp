@@ -70,29 +70,6 @@ struct CL
         clReleaseDevice(device);
     }
 
-    void set_kernel(std::string const& fn, std::string const& kernelname)
-    {
-        cl_int status;
-        std::ifstream file(fn);
-        std::string source(std::istreambuf_iterator<char>(file), (std::istreambuf_iterator<char>()));
-        size_t      sourceSize = source.size();
-        const char* sourcePtr = source.c_str();
-        program = clCreateProgramWithSource(context, 1, &sourcePtr, &sourceSize, &status);
-
-        status = clBuildProgram(program, 1, &device, "", nullptr, nullptr);
-        if (status != CL_SUCCESS)
-        {
-            size_t len = 0;
-            status = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, nullptr, &len);
-            std::unique_ptr<char[]> log = std::make_unique<char[]>(len);
-            status = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, len, log.get(), nullptr);
-            std::cout << log.get() << "\n";
-            MessageBoxA(0, log.get(), nullptr, 0);
-        }
-        kernel = clCreateKernel(program, kernelname.c_str(), &status);
-        if(!kernel){ std::cout << "Kernel FAIL\n"; }
-    }
-
     template<typename T>
     cl::sycl::buffer<T, 1> create_from_gl_buffer( std::vector<T>& data, cl_mem_flags const& flags, GLuint glid )
     {
