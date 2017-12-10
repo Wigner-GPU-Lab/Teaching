@@ -112,7 +112,6 @@ auto roots(F f, DF df, T x00, T x10, size_t n, T tol)
 	if(res0.size() == 0){ return res0; }
 	{
 		T last = res0[0];
-		//res.push_back(last);
 		int last_idx = 0;
 		for(int i=1; i<res0.size(); ++i)
 		{
@@ -133,6 +132,7 @@ int main()
 {
 	std::cout << std::setprecision(16);
 	{
+		//Calculate square root os 612:
 		auto f = [](double x){ return x*x - 612.; };
 		auto df = [](double x){ return 2. * x; };
 
@@ -165,6 +165,7 @@ int main()
 
 	auto res = roots(f, df, -5.0, 5.0, 2048, 1e-9);
 
+	//Compare: http://www.wolframalpha.com/input/?i=12th+Hermite+polynomial+*+exp(-x*x%2F2)
 	std::cout << "Roots of the 12th Hermite polinomial:\n";
 	for(int i=0; i<(int)res.size(); ++i)
 	{
