@@ -35,10 +35,10 @@ auto MCI(cl::sycl::queue& queue, size_t nth, size_t N, Fi f, Fm mask, T x0, T x1
 
 	std::vector<T> tmp( (size_t)std::ceil(nth/local_count) );
 
-	printf("Number of samples: %zi\n", N);
-	printf("Number of threads: %zi\n", nth);
-	printf("Number of blocks: %zi\n", tmp.size());
-	printf("Try limit per thread: %zi\n", thcount);
+	//printf("Number of samples: %zi\n", N);
+	//printf("Number of threads: %zi\n", nth);
+	//printf("Number of blocks: %zi\n", tmp.size());
+	//printf("Try limit per thread: %zi\n", thcount);
 
 	T res = (T)0;
 	auto t0 = std::chrono::high_resolution_clock::now();
@@ -111,13 +111,16 @@ auto MCI(cl::sycl::queue& queue, size_t nth, size_t N, Fi f, Fm mask, T x0, T x1
 
 int main()
 {
-	cl::sycl::queue queue{ cl::sycl::gpu_selector() };
-
-	auto res = MCI(queue, 256*64, (size_t)1 << (size_t)35, [](auto x, auto y){ return 1.0; }, [](auto x, auto y){ return sq(x)+sq(y) <= 1.0; }, -1.0, 1.0, -1.0, 1.0);
-
-	printf("GPU result = %16.16f\n", res.first);
-	printf("ref result = %16.16f\n", pi);
-	printf("result ratio = %16.16f\n", res.first / pi);
-	printf("time = %i ms\n", res.second);
+	cl::sycl::queue queue{ cl::sycl::amd_selector() };
+	std::ofstream file("MCscaling.txt");
+	for(size_t n=1; n<16; ++n)
+	{
+		auto res = MCI(queue, 256*n, (size_t)1 << (size_t)30, [](auto x, auto y){ return 1.0; }, [](auto x, auto y){ return sq(x)+sq(y) <= 1.0; }, -1.0, 1.0, -1.0, 1.0);
+		//printf("GPU result = %16.16f\n", res.first);
+		//printf("ref result = %16.16f\n", pi);
+		printf("result ratio = %16.16f\n", res.first / pi);
+		printf("[%zi] time = %f ms\n", n, res.second/1000./1000.);
+		file << n << "   " << res.second/1000./1000. << "   " << abs(1.0 - res.first / pi) << "\n";
+	}
 	return 0;
 }
