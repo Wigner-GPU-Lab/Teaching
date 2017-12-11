@@ -52,7 +52,8 @@ auto NewtonIterator( F f, dF df, S const& start, T const& tolerance, int nmaxit 
                     {
                         auto xnn = xn_n.l - f(xn_n.l)/df(xn_n.l);
 						int n = xn_n.r + 1;
-						return maybe(cl::sycl::fabs(xnn-xn_n.l)*2 > tolerance && n < nmaxit, [=]{ return makePair(makePair(xnn, n), makePair(xnn, n)); });
+						return maybe(cl::sycl::fabs(xnn-xn_n.l)*2 > tolerance && n < nmaxit,
+							[=]{ return makePair(makePair(xnn, n), makePair(xnn, n)); });
                     },
                     [](auto xn, auto xnn){ return xnn; },
                     start, makePair(0.0, 0) );
@@ -143,7 +144,8 @@ int main()
 						 {
 							auto xnn = xn_n.l - f(xn_n.l)/df(xn_n.l);
 							int n = xn_n.r + 1;
-							return maybe(cl::sycl::fabs(xnn-xn_n.l)*2 > 1e-14 && n < 5000, [=]{ return makePair(makePair(xnn, n), makePair(xnn, n)); });
+							return maybe(cl::sycl::fabs(xnn-xn_n.l)*2 > 1e-14 && n < 5000,
+								         [=]{ return makePair(makePair(xnn, n), makePair(xnn, n)); });
 						 },
 						 [](auto xn, auto xnn){ std::cout << xnn.r << "   " << xn.l << " -> " << xnn.l << "\n"; return xnn; }, makePair(x0, 0), makePair(x0, 0) );
 		std::cout << "Result = " << res.l << "\n"

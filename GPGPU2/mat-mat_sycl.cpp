@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <fstream>
 
 template<int i> struct Int{};
 
@@ -307,40 +308,48 @@ int main()
 	using R = std::pair<std::vector<T>, double>;
 
 	// Size of vectors
-	size_t n = 1024*4;
-
-	// Host vectors
-	std::vector<T> A(n*n);
-	std::vector<T> B(n*n);
-
-	long state = std::random_device()();
-
-	// Initialize vectors on host
-	for(size_t i = 0; i < n; i++ )
+	size_t n = 64;
+	std::ofstream file("matmul.txt");
+	for(; n <= 1024*4; n *= 2)
 	{
-		for(size_t j = 0; j < n; j++ )
+		std::cout << "\nn = " << n << "\n\n";
+		// Host vectors
+		std::vector<T> A(n*n);
+		std::vector<T> B(n*n);
+
+		long state = std::random_device()();
+
+		// Initialize vectors on host
+		for(size_t i = 0; i < n; i++ )
 		{
-			A[i*n+j] = (T)((i+j+1) / (1.*n*n));//(T)uniform_rnd(state);//(i+j+1) / (1.*n*n);
-			B[i*n+j] = (T)((i-j+2) / (1.*n*n));//(T)uniform_rnd(state);//(i-j+2) / (1.*n*n);
+			for(size_t j = 0; j < n; j++ )
+			{
+				A[i*n+j] = (T)((i+j+1) / (1.*n*n));//(T)uniform_rnd(state);//(i+j+1) / (1.*n*n);
+				B[i*n+j] = (T)((i-j+2) / (1.*n*n));//(T)uniform_rnd(state);//(i-j+2) / (1.*n*n);
+			}
 		}
+
+		auto ref = cpu_naive(A, B);
+
+		auto summary = [&]( std::string const& title, std::vector<R> const& v )
+		{
+			std::cout << title << ": ";
+			for(auto const& r : v){ std::cout << r.second << " ms (" << (is_same(r.first, ref.first) ? '+' : '-') << ") "; }
+			std::cout << "\n";
+
+			file << "   " << v[1].second;
+		};
+
+		file << n << "   " << ref.second;
+		summary("CPU Blocked 4",  {ref, cpu_blocked<4>(A, B)});
+		summary("CPU Blocked 8",  {ref, cpu_blocked<8>(A, B)});
+		summary("CPU Blocked 16", {ref, cpu_blocked<16>(A, B)});
+		summary("CPU Blocked 32", {ref, cpu_blocked<32>(A, B)});
+		summary("GPU Naive",  {ref, matmatmul_naive(queue, A, B)});
+		summary("GPU Shared", {ref, matmatmul_shared<16>(queue, A, B)});
+		summary("GPU Vectorized", {ref, matmatmul_vectorized<16, 2>(queue, A, B)});
+		file << "\n";
 	}
-
-	auto ref = cpu_blocked<8>(A, B);//cpu_naive(A, B);
-
-	auto summary = [&]( std::string const& title, std::vector<R> const& v )
-	{
-		std::cout << title << ": ";
-		for(auto const& r : v){ std::cout << r.second << " ms (" << (is_same(r.first, ref.first) ? '+' : '-') << ") "; }
-		std::cout << "\n";
-	};
-
-	//summary("CPU Blocked 4",  {ref, cpu_blocked<4>(A, B)});
-	//summary("CPU Blocked 8",  {ref, cpu_blocked<8>(A, B)});
-	//summary("CPU Blocked 16", {ref, cpu_blocked<16>(A, B)});
-	//summary("CPU Blocked 32", {ref, cpu_blocked<32>(A, B)});
-	summary("Naive",  {ref, matmatmul_naive(queue, A, B)});
-	summary("Shared", {ref, matmatmul_shared<16>(queue, A, B)});
-	summary("Vectorized", {ref, matmatmul_vectorized<16, 2>(queue, A, B)});
 
 	return 0;
 }
