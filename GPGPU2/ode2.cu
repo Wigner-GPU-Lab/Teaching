@@ -11,7 +11,7 @@ __host__ __device__ int size( LVState const& ){ return 2; }
 
 template<typename F> __device__ LVState map(F f, LVState const& s){ return LVState{ f(s.rabbits), f(s.wolves) }; }
 template<typename F> __device__ LVState zip(F f, LVState const& s, LVState const& s2){ return LVState{ f(s.rabbits, s2.rabbits), f(s.wolves, s2.wolves) }; }
-template<typename F> __device__ auto reducel(F f, LVState const& s){ return f(s.rabbits, s.rabbits); }
+template<typename F> __device__ auto reducel(F f, LVState const& s){ return f(s.rabbits, s.wolves); }
 
 struct RungeKutta4Stepper
 {
