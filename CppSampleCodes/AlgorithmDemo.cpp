@@ -35,12 +35,9 @@ std::ostream& operator<<( std::ostream& s, Continent const& c )
     return s;
 }
 
-struct Continent2
+struct Continent2 : Continent
 {
-	Continent2( Continent const& c ):name{c.name}, area{c.area}, population{c.population}, density{c.density()}{}
-	std::string name;
-	unsigned long long area;
-	unsigned long long population;
+	Continent2( Continent const& c ):Continent{c}, density{c.density()}{}
 	double density;
 };
 
@@ -102,8 +99,15 @@ int main()
 	//Print data:
 	PrintContinents<Continent2>("Selection by population density < 50.0:", selection);
 
+	//Select contintent with largest area:
+	auto la_it = std::max_element(data.cbegin(), data.cend(), [](Continent const& c1, Continent const& c2){ return c1.area < c2.area;});
+
+	//Print largest:
+	std::cout << "Continent with largest area:\n";
+	std::cout << *la_it << "\n\n\n";
+
 	//Partition:
-	auto partition_point = std::partition(data.begin(), data.end(), [](Continent const& c){ return c.area < 44579000 / 2; });
+	auto partition_point = std::partition(data.begin(), data.end(), [&](Continent const& c){ return c.area < la_it->area / 2; });
 
 	std::vector<Continent> lower_part, higher_part;
 	std::copy(data.begin(), partition_point, std::back_inserter(lower_part));
