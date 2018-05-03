@@ -15,6 +15,7 @@ option (BUILD_CUDA "Build CUDA samples" OFF)
 option (BUILD_OPENCL "Build OpenCL samples" ON)
 option (BUILD_SYCL "Build SYCL samples" OFF)
 option (BUILD_OPENGL "Build OpenGL samples" ON)
+option (BUILD_CPP "Build C++ samples" ON)
 
 #
 # Set platform-independent variables
@@ -24,29 +25,23 @@ option (BUILD_OPENGL "Build OpenGL samples" ON)
 
   # Override predefined default output directories
   set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
+
+  # Find dependencies
+  find_package (Threads REQUIRED)
 	
 #
 # Set platform-specific variables
 #
   # If compiling on Windows
   if (WIN32)
-    find_package (Threads REQUIRED)
-
-	if(CMAKE_VERSION MATCHES "MSVC")
-      message(STATUS "Visual Studio IDE integration detected.")
-	  message(STATUS "Disabling CMake's automatic reconfiguration in favor of IDE detection.")
-	  set(CMAKE_SUPPRESS_REGENERATION ON CACHE BOOL "Disables pre-build rule of checking script timestamps")
-	endif(CMAKE_VERSION MATCHES "MSVC")
   endif (WIN32)
 
   # If compiling under Linux
   if (UNIX)
-    find_package (Threads REQUIRED)
   endif (UNIX)
 
   # If compiling under OSX
   if (APPLE)
-    find_package (Threads REQUIRED)
   endif (APPLE)
 
 #
@@ -71,6 +66,10 @@ option (BUILD_OPENGL "Build OpenGL samples" ON)
 #
 # Process targets based on user-input
 #
+  if (BUILD_CPP)
+    add_subdirectory (C++)
+  endif (BUILD_CPP)
+
   if (BUILD_CUDA)
     add_subdirectory (CUDA)
   endif (BUILD_CUDA)

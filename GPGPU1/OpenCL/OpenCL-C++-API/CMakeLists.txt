@@ -47,6 +47,11 @@ target_include_directories (${PROJECT_NAME} PRIVATE ${OpenCL_INCLUDE_DIRS})
 target_link_libraries (${PROJECT_NAME} ${OpenCL_LIBRARIES} Threads::Threads)
 
 # Compiler specific options
+if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  # The implementation of cl::copy does not comply with MSVC checked iterators
+  target_compile_definitions(${PROJECT_NAME} PRIVATE "-D_SCL_SECURE_NO_WARNINGS")
+endif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes") # cl2.hpp contains attributes on basic types (cl_int, cl_double, etc.)
 endif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
