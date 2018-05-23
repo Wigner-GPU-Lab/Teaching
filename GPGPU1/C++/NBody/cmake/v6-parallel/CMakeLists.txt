@@ -35,7 +35,10 @@ add_executable (${PROJECT_NAME} ${Files_BUILD})
 target_include_directories (${PROJECT_NAME} PUBLIC ${Project_Base_Dir}/inc/)
 
 # Create project groups for IDEs
-set_target_properties (${PROJECT_NAME} PROPERTIES FOLDER "C++\\NBody")
+set_target_properties (${PROJECT_NAME} PROPERTIES CXX_STANDARD 14
+                                                  CXX_STANDARD_REQUIRED ON
+                                                  CXX_EXTENSIONS OFF
+                                                  FOLDER "C++\\NBody")
 
 #########################
 #                       #
