@@ -34,6 +34,9 @@ add_executable (${PROJECT_NAME} ${Files_BUILD})
 # Append our project's include directory to the "#include <>" paths
 target_include_directories (${PROJECT_NAME} PUBLIC ${Project_Base_Dir}/inc/)
 
+# Link dependencies
+target_link_libraries (${PROJECT_NAME} Threads::Threads)
+
 # Create project groups for IDEs
 set_target_properties (${PROJECT_NAME} PROPERTIES CXX_STANDARD 14
                                                   CXX_STANDARD_REQUIRED ON
