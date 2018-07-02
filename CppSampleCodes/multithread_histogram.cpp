@@ -20,10 +20,10 @@ int main()
 	std::vector<double> vec(10'000'000);
 
 	std::random_device random_source;
-    std::normal_distribution<double> dist(5.0, 0.8);
+	std::normal_distribution<double> dist(5.0, 0.8);
 	std::generate( vec.begin(), vec.end(), [&](){ return dist(random_source); } );
 
-    static const int histo_size = 30;
+	static const int histo_size = 30;
 	std::vector<atomic_wrapper<int>> atomic_histogram(histo_size);
 	std::vector<int>                 non_atomic_histogram(histo_size);
 
@@ -42,7 +42,7 @@ int main()
 		}
 	};
 
-    auto non_atomic_averager = [&](auto it0, auto it1)
+	auto non_atomic_averager = [&](auto it0, auto it1)
 	{
 		for( auto it=it0; it!=it1; ++it)
 		{
@@ -55,18 +55,17 @@ int main()
 	};
 
 	int max_num_of_threads = (int)std::thread::hardware_concurrency();
-    std::cout << "Using " << max_num_of_threads << " threads.\n";
+	std::cout << "Using " << max_num_of_threads << " threads.\n";
 	std::vector<std::future<void>> atomic_futures(max_num_of_threads);
-    std::vector<std::future<void>> non_atomic_futures(max_num_of_threads);
+	std::vector<std::future<void>> non_atomic_futures(max_num_of_threads);
 
 	auto time0 = std::chrono::high_resolution_clock::now();
 
 	//start atomic threads:
-	int step = 1 + (int)vec.size() / max_num_of_threads;
 	for(int n=0; n<max_num_of_threads; ++n )
 	{
-		auto it0 = std::next(vec.begin(), std::max( n    * step, 0)              );
-		auto it1 = std::next(vec.begin(), std::min((n+1) * step, (int)vec.size()));
+		auto it0 = vec.begin() + n * vec.size() / max_num_of_threads;
+		auto it1 = vec.begin() + (n + 1) * vec.size() / max_num_of_threads;
 		atomic_futures[n] = std::async( std::launch::async, atomic_averager, it0, it1 );
 	}
 
@@ -83,11 +82,11 @@ int main()
 
 	auto time1 = std::chrono::high_resolution_clock::now();
 
-    //start non-atomic threads:
+	//start non-atomic threads:
 	for(int n=0; n<max_num_of_threads; ++n )
 	{
-		auto it0 = std::next(vec.begin(), std::max( n    * step, 0)              );
-		auto it1 = std::next(vec.begin(), std::min((n+1) * step, (int)vec.size()));
+		auto it0 = vec.begin() + n * vec.size() / max_num_of_threads;
+		auto it1 = vec.begin() + (n + 1) * vec.size() / max_num_of_threads;
 		non_atomic_futures[n] = std::async( std::launch::async, non_atomic_averager, it0, it1 );
 	}
 
