@@ -31,8 +31,8 @@ int main()
 	//start threads:
 	for(int n=0; n<max_num_of_threads; ++n )
 	{
-		auto it0 = vec.begin() + k * vec.size() / max_num_of_threads;
-        	auto it1 = vec.begin() + (k + 1) * vec.size() / max_num_of_threads;
+		auto it0 = vec.begin() + n * vec.size() / max_num_of_threads;
+        	auto it1 = vec.begin() + (n + 1) * vec.size() / max_num_of_threads;
 		futures[n] = std::async( std::launch::async, averager, it0, it1 );
 	}
 
