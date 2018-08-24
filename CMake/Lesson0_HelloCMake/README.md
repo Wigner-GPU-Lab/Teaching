@@ -213,8 +213,8 @@ without any joining characters. Without placing quotation marks around `${VERB},
 became separate function arguments. The only time one needs quotation marks, is if he/she wishes to
 guard spaces from becoming white-spaces.
 
-If we wanted to concatenate two strings (fairly common when assembling file paths for eg.) we could
-do so with
+If we wanted to concatenate two strings (fairly common when assembling file paths for example) we
+could do so with
 
 ```CMake
 set(BASEPATH ./)

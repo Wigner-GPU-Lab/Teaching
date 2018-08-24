@@ -2,7 +2,7 @@
 
 
 One of the strengths of CMake is its ability to find dependencies with minimal user effort (based on
-upstream support). There are two categories of dependencies, both with their preferred way of
+upstream support). There are two categories of dependencies, both with their preferred method of
 detection:
 
 - Upstream is a binary or is built using another technology
@@ -10,7 +10,7 @@ detection:
 
 There is also a hidden third option:
 
-- Upstream is built using another technology but ships with CMake support
+- Upstream is built using another technology, but ships with CMake support
 
 ## Find Module dependency detection
 
@@ -22,10 +22,10 @@ create environmental variables when installed properly, which may guide the find
 Guessing user defined install locations in advance requires otherwordly support. Depending on such
 libraries will need minimal user interaction.
 
-The scripts that detect such dependencies are called Find Module scripts and are named by convention
-as `FindName.cmake`, where "Name" is the name of the dependency, for eg. `FindMPI.cmake`. Authoring
-such scripts is outside the scope of this lesson, but will be explained in a later lesson. For the
-time being, we'll restrict ourselves to browsing the comments section of these scripts.
+The scripts that detect such dependencies are called _Find Module scripts_, and are named by convention
+as `FindName.cmake`, where "Name" is the name of the dependency, for example. `FindMPI.cmake`.
+Authoring such scripts is outside the scope of this lesson, but will be explained in a later lesson.
+For the time being, we'll restrict ourselves to browsing the comments section of these scripts.
 
 CMake (3.9) comes with 148 pre-installed find module scripts. _(On Windows they are located under
 `<install root>\share\cmake-3.9\Modules` and on Ubuntu 16.04 under
@@ -64,9 +64,9 @@ of what comes bundled with CMake. Let's take a look at FindMPI.cmake, shall we?
 #   All libraries to link MPI programs against.
 ```
 
-Up until this point, the comments section demonstrates, how to depend on MPI using the "old school"
-way. The comments are fairly straightforward. Once the scripts are run, they set certain variables
-which we may use in our build scripts.
+Up to this point, the comments section demonstrates how to depend on MPI using the "old school"
+method. The comments are fairly straightforward: once the scripts are run, they set certain
+variables which we may use in our build scripts.
 
 How do we run these find module scripts? We use the `find_package` command like this:
 
@@ -87,11 +87,11 @@ If you think to yourself, this seems like a great deal of work only to link to M
 (Hold on a sec, we'll have you covered.) All this is required because there are quite a few MPI
 implementations out in the wild, and `FindMPI.cmake` knows how to use just about all of them. Some
 require just include directories set up, some require only linking, others require extra compile
-definitions... even you you know for a fact, that the MPI flavor you have installed only requires
-linkage per say (in which case variables like `${MPI_C_COMPILE_FLAGS}` are empty), others have gone
+definitions... even you you know for a fact that the MPI flavor you have installed only requires
+linkage _per se_ (in which case variables like `${MPI_C_COMPILE_FLAGS}` are empty), others have gone
 to great lengths in order to collect all the MPI variations and the means of consuming them.
-Sometimes it's nice to just not think about stuff and do as one's told and stay rest assured that
-it's always going to be fine.
+Sometimes it's nice to just not think about stuff and do as one's told and rest assured that it's
+always going to be fine.
 
 ### Import target syntax
 
@@ -123,12 +123,11 @@ target_link_libraries(app PRIVATE MPI::MPI_C)
 Wow! That is much simpler. All the properties we set manually earlier are now all inherited from the
 imported target. The first part of imported target, before `::` is always the name of the module at
 hand. The second part are "sub-modules", parts of the module than can stand by themselves. In the
-case of MPI, an implementation may omit Fortran bindings for eg., but that doesn't mean we couldn't
-rely on the C bindings.
+case of MPI, an implementation may omit Fortran bindings for example, but that doesn't mean we
+couldn't rely on the C bindings.
 
-Another prime example is Boost with many subprojects which may be consumed seperately using
-`Boost::filesystem` for eg. In this case, one need not detect all subprojects (they might even be
-absent).
+Another prime example is Boost, with many subprojects which may be consumed separately using
+`Boost::filesystem`. In this case, one need not detect all subprojects (they might even be absent).
 
 ```CMake
 find_package(Boost REQUIRED VERSION 1.56
@@ -141,7 +140,7 @@ target_link_libraries(app PRIVATE Boost::filesystem)
 
 One can not only request the minimal set of submodules, but only the minimal version accepted.
 
-Unfortunately not all modules provide the imported target syntax. Should you take interest in
+Unfortunately, not all modules provide the imported target syntax. Should you take interest in
 depending on such a module, and you feel like contributing "for the greater good", it is fairly
 simple to cook up imported target syntax based on any one of the other modules that support it.
 Posting your patches to the cmake-developer mailing list, you could make the lives of others easier
@@ -153,12 +152,12 @@ targets. These will be explained in a coming lesson of this tutorial.
 ### Shipping Find Module scripts
 
 You may find yourself in a place where you'd want to ship a find module script along with your
-program. For eg.:
+program. For example:
 
-- The find module scripts shipping with a given CMake version you wish to target are too old and you
-  want to ship a more up-to-date version.
+- The find module scripts shipping with a given CMake version you wish to target are too old, and
+  you want to ship a more up-to-date version.
 - The find module scripts do not ship with CMake, but the author of the library provides one (SFML
-  for eg.).
+  for example).
 - Neither CMake, neither the library author provides such a script, you just found one online,
   written by a desperate soul.
 
@@ -194,10 +193,10 @@ my_project -+
 
 When an upstream was built using CMake, it may also create a set of scripts that are tailored to the
 given install, no matter how exotic. As a result, finding and depending on such libraries always
-succeeds. 100% of the time, zero user interaction required. These scripts are referred to as Package
-Config scripts.
+succeeds — 100% of the time, with zero user interaction required. These scripts are referred to as
+Package Config scripts.
 
-One such library for instance is [clFFT](https://github.com/clMathLibraries/clFFT), an OpenCL accelerated FFT library.
+One such library for instance is [clFFT], an OpenCL accelerated FFT library.
 
 When using such libraries, one usually has to build the library from source. Of course, package
 config type dependencies are available when the upstream is __built__ with cmake.
@@ -216,7 +215,7 @@ cmake --build . --target install
 
 This will fetch the latest (at the time of writing) tagged version of clFFT, build it and install it
 under the user's home directory. _(NOTE: `CMAKE_INSTALL_PREFIX` is the canonical variable that
-controlls the target location of the `install` target. More on magic params like this later.)_
+controlls the target location of the `install` target. More on magic parameters like this later.)_
 
 So where are the magic package config scripts? After taking a look at the install we'll find a
 folder:
@@ -233,17 +232,16 @@ clFFTTargets-debug.cmake
 
 It is sufficient to know that these are the files CMake will be looking for. However, CMake knows
 nothing about where a user will place installs. In order to tell CMake where package config scripts
-reside on disk, we must register this folder in CMakes [package
-registry](https://cmake.org/cmake/help/latest/manual/cmake-packages.7.html?highlight=package#package-registry).
+reside on disk, we must register this folder in CMake's [package registry].
 
 Some well written CMake scripts may even register the installations by themselves, though generally
-this task remains as an exercise for the user. (More on this later in the package authoring lesson.)
+this task remains an exercise for the user. (More on this later in the package authoring lesson.)
 
 #### Ubuntu
 
 On *nix derivates, CMake will inspect the folder `~/.cmake/packages`. In it, it will look for
-folders with identical name as the package and inside it will look for plain text files of arbitrary
-names which contain the path to the package config scripts.
+folders with the same name as the package, and inside it will look for plain text files of arbitrary
+names that contain the path to the package config scripts.
 
 ```
 mkdir ~/.cmake
@@ -261,8 +259,8 @@ ls -R ~/.cmake/packages
 
 #### Windows
 
-On Windows, CMake will inspect the users registry, which is most easily edited using Powershell.
-Let's say we installed clFFT under `C:\Program Files\clMath\clFFT\2.12.2`
+On Windows, CMake will inspect the user's registry database, which is most easily edited using
+Powershell. Let's say we installed clFFT under `C:\Program Files\clMath\clFFT\2.12.2`
 
 ```Powershell
 New-Item HKCU:\SOFTWARE\Kitware\CMake\Packages
@@ -271,8 +269,8 @@ New-ItemProperty -Path HKCU:\SOFTWARE\Kitware\CMake\Packages\clFFT -Name 2.12.2 
 ```
 
 For those unfamiliar with Powershell, `HKCU:\` is a PSDrive (Powershell Drive, a traversible virtual
-drive for tree-like structures), for the system registry; more precisely it is the users own
-registry. It abbreviates _Hive Key Current User_. Again, the name of the property need not be the
+drive for tree-like structures) for the system registry; more precisely it is the user's own
+registry. (It's an abbeviation of _Hive Key Current User_.) Again, the name of the property need not be the
 same as the version string, just something that holds meaning preferably. To list all the installed
 packages, just list the packages registry folder.
 
@@ -280,13 +278,13 @@ packages, just list the packages registry folder.
 Get-ChildItem HKCU:\SOFTWARE\Kitware\CMake\Packages
 ```
 
-_NOTE: on Windows, packages can be installed system-wide, for all users when registered into
-`HKLM:\`, the local machines registry as opposed to the users registry. This requires administrator
-priviliges._
+_NOTE: on Windows, packages can be installed system-wide for all users when registered into
+`HKLM:\`, the local machine's registry, as opposed to the user's registry. This requires
+administrator priviliges._
 
 ### Using packages
 
-After doing so, every project that uses clFFT can link to it like:
+After doing so, every project that uses clFFT can link to it like so:
 
 ```CMake
 find_package(clFFT REQUIRED)
@@ -310,7 +308,7 @@ in 5.9 it still omits registering them in the appropriate package registry)_, bu
 cooked some tooling invocation natively into CMake.
 
 Qt5 uses a few extensions to the C++ language guided by a set of tools that do additional
-"compilation" steps upon building, resulting in extra source files which need compiling and linking
+"compilation" steps upon building, resulting in extra source files that need compiling and linking
 to the target. The most basic such tool takes care of the MOC (Meta Object Creation) step. The
 `moc.exe` tool inspects the source files, looks for a magic define, and if it's found, it emits an
 extra source file which the C++ compiler also needs to compile and link.
@@ -331,6 +329,9 @@ Qt5 contains a few more such extra compilation steps, again guided by native CMa
 explaining all of them remain outside the scope of this lesson.
 
 
+
+[clFFT]: https://github.com/clMathLibraries/clFFT
+[package registry]: https://cmake.org/cmake/help/latest/manual/cmake-packages.7.html?highlight=package#package-registry
 
 <br><br>
 

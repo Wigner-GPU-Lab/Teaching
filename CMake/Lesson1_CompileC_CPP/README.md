@@ -111,7 +111,7 @@ project(Lesson1 LANGUAGES C)
 add_executable(Lesson1 Source.c)
 ```
 
-_NOTE: the vigilant reader might have noticed, that we defined a function in a header file just a
+_NOTE: the vigilant reader might have noticed that we defined a function in a header file just a
 few lines after explaining how it violates the header/source distinction. This serves the sole
 purpose of proving a point in just a moment._
 
@@ -158,7 +158,7 @@ CMake has an understanding of the C/C++ compilation model and generates makefile
 operate on the timestamps of the input files, but also carry out automatic dependency tracking
 assisted by the compilers. You might have noticed the
 
->Scanning dependencies of target Lesson1
+> `Scanning dependencies of target Lesson1`
 
 part in the console output when we built our project. This is the step where the dependency
 detection part of the generated makefiles are processed. The compiler is invoked with flags that
@@ -175,8 +175,8 @@ Header files belonging to a target should be explicitly mentioned:
 
 Automatic dependency tracking is not an excuse to omit header file definitions inside the build
 scripts. Its purpose becomes apparent when one starts using libraries. Declaring your headers is as
-simple as declaring the sources were. CMake will know that files with header extensions are not to
-be compiled separately.
+simple as it was to declare the sources. CMake will know that files with header extensions are not
+to be compiled separately.
 
 ```CMake
 add_executable(Lesson1 Header.h Source.c)
@@ -233,19 +233,18 @@ add_executable(example inc/Header1.h
 target_include_directories(example PRIVATE inc)
 ```
 
-Doing so, one is allowed to include them in code like this:
+After doing so, one is allowed to include them in code like this:
 
 ```C
 #include <Header1.h>
 ```
 
->The `target_include_directories` command essentially controls the `-I` or `/I` switch of the
->compiler invocation.
+The `target_include_directories` command essentially controls the `-I` or `/I` switch of the
+compiler invocation.
 
-This (at least in my experience) is good practice and pays off to get used to. The `PRIVATE`
-argument is one of three possible choices as explained in the
-[commands docs](https://cmake.org/cmake/help/latest/command/target_include_directories.html?highlight=target_include_directories),
-which control the propagation of this property to downstreams, consumers of the target.
+This (at least in my experience) is good practice and worth getting used to. The `PRIVATE` argument
+is one of three possible choices as explained in the [command docs], which control the propagation
+of this property to downstreams, consumers of the target.
 
 - `PRIVATE` is used when consuming targets need not inherit the given property. In the case of an
   executable, this is safe to use, as nobody can "link" to an executable. In the case of libraries,
@@ -254,7 +253,7 @@ which control the propagation of this property to downstreams, consumers of the 
   types do not show up in the interface of the library being compiled. Thus downstreams need not
   append the include directory to their own.
 
-- `PUBLILC` is used when consuming targets need to inherit the given property. If types manifest in
+- `PUBLIC` is used when consuming targets need to inherit the given property. If types manifest in
   the interface of the library, or definitions need to surface, downstreams must be able to locate
   the header files used, but not owned by the library.
 
@@ -316,6 +315,8 @@ rational might have been with this default behavior.)_ Similarily, C++ versions 
 via the `CXX_STANDARD` and `CXX_STANDARD_REQUIRED` properties.
 
 
+
+[command docs]: https://cmake.org/cmake/help/latest/command/target_include_directories.html?highlight=target_include_directories
 
 <br><br>
 

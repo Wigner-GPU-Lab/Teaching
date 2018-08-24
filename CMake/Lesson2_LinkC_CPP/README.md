@@ -3,7 +3,8 @@
 
 Compiling a standalone executable is nice, though more often than not is not enough. One might wish
 to rely on external code compiled into a library and link to it. Buiding a library and linking
-against it comes by invoking two simple commands: `add_library` and `target_link_libraries`.
+against it is accomplised by invoking two simple commands: `add_library` and
+`target_link_libraries`.
 
 ```CMake
 add_library(util Util.h Util.c)
@@ -13,7 +14,7 @@ add_executable(app Main.c)
 target_link_libraries(app PRIVATE util)
 ```
 
-Should one be confused what's going on here, all will be made clear momentarily.
+Should one be confused by what's going on here, all will be made clear momentarily.
 
 ## The `add_library` command
 
@@ -28,9 +29,8 @@ target_include_directories(util PUBLIC inc)
 ```
 
 The `add_library` command instructs CMake to emit a library of the defult type. Taking a look at
-[the docs](https://cmake.org/cmake/help/latest/command/add_library.html?highlight=add_library), we
-can see that there is an optional param which may override the default library type controlled via
-`BUILD_SHARED_LIBS` boolean variable.
+[the docs], we can see that there is an optional parameter which may override the default library
+type controlled by the `BUILD_SHARED_LIBS` boolean variable.
 
 _NOTE: The actual name of the library on disk is OS dependant. A shared library on *nix-like OSes
 will be `libname.so` and `name.dll` on Windows, whereas static libraries are named `libname.a` and
@@ -45,10 +45,9 @@ The available library types are:
 + `OBJECT` will create an object library. An object library is a group of sources compiled to a
   single object file (but not a library). You can think of it as a logical grouping of source files.
   Object libraries like MODULE directories are not linked to, but instead may appear among the
-  source file definitions of another library or executable. For eg. as of CMake 3.9, CUDA is a
+  source file definitions of another library or executable. For example, as of CMake 3.9, CUDA is a
   built-in language and CUDA `.cu` sources may be compiled to an object library (optionally with a
-  special `.ptx` extension as opposed to the default `.obj`. See
-  [CUDA_PTX_COMPILATION](https://cmake.org/cmake/help/latest/prop_tgt/CUDA_PTX_COMPILATION.html?highlight=add_library)).
+  special `.ptx` extension as opposed to the default `.obj` — see [CUDA_PTX_COMPILATION]).
   Doing so, one can even use separate compilers for select source files of the same target.
 
 ## The `target_link_libraries` command
@@ -75,10 +74,13 @@ There are multiple things to note here:
 - We did not have to redeclare the include directory of `util` on the target `use`. That is because
   we declared the `inc` directory to be `PUBLIC`, thus it is propagated to all consumers of `util`.
   - However, the use of `util` itself is totally a private matter of the executable, no further
-    propagation of this linkage information is required. _NOTE: placing `PUBLIC` instead of
-    `PRIVATE` wouldn't hurt either._
+    propagation of this linkage information is required. _NOTE: using `PUBLIC` instead of `PRIVATE`
+    wouldn't hurt either._
 
 
+
+[the docs]: https://cmake.org/cmake/help/latest/command/add_library.html?highlight=add_library
+[CUDA_PTX_COMPILATION]: https://cmake.org/cmake/help/latest/prop_tgt/CUDA_PTX_COMPILATION.html?highlight=add_library
 
 <br><br>
 
