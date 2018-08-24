@@ -1,6 +1,6 @@
 # CMake tutorial
 
-![alt text](https://www.kitware.com/main/wp-content/uploads/2016/04/CMake_logo.svg)
+![CMake](https://www.kitware.com/main/wp-content/uploads/2018/07/cmake_logo.svg)
 
 This repository contains a step-by-step guide that wishes to guide you through understanding CMake,
 an increasingly ubiquitous cross-platform build system generator.
