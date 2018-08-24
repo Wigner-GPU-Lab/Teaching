@@ -77,3 +77,12 @@ There are multiple things to note here:
   - However, the use of `util` itself is totally a private matter of the executable, no further
     propagation of this linkage information is required. _NOTE: placing `PUBLIC` instead of
     `PRIVATE` wouldn't hurt either._
+
+
+
+<br><br>
+
+----------------------------------------------------------------------------------------------------
+⏪ [Prior Lesson](../Lesson1_CompileC_CPP/)
+         ⏫ [Back to Top](../)
+         [Next Lesson](../Lesson3_Dependencies/) ⏩

@@ -314,3 +314,12 @@ property denotes a hard requirement. This is needed, because by default CMake al
 fallback if the compiler at hand does not support the given version. _(I have no idea what the
 rational might have been with this default behavior.)_ Similarily, C++ versions can be controlled
 via the `CXX_STANDARD` and `CXX_STANDARD_REQUIRED` properties.
+
+
+
+<br><br>
+
+----------------------------------------------------------------------------------------------------
+⏪ [Prior Lesson](../Lesson0_HelloCMake/)
+         ⏫ [Back to Top](../)
+         [Next Lesson](../Lesson2_LinkC_CPP/) ⏩

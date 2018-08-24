@@ -329,3 +329,11 @@ set_target_properties(App PROPERTIES AUTOMOC ON)
 
 Qt5 contains a few more such extra compilation steps, again guided by native CMake support, but
 explaining all of them remain outside the scope of this lesson.
+
+
+
+<br><br>
+
+----------------------------------------------------------------------------------------------------
+⏪ [Prior Lesson](../Lesson2_LinkC_CPP/)
+         ⏫ [Back to Top](../)
