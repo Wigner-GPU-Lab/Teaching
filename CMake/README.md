@@ -102,4 +102,4 @@ Now that you've got the high-level picture, continue learning CMake with the fol
 - [Lesson 0: Hello CMake](Lesson0_HelloCMake/)
 - [Lesson 1: Compile C/C++](Lesson1_CompileC_CPP/)
 - [Lesson 2: Link C/C++](Lesson2_LinkC_CPP/)
-- [Lesson 3: Dependencies](Lesson3_Dependecies/)
+- [Lesson 3: Dependencies](Lesson3_Dependencies/)
