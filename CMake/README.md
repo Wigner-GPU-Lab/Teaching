@@ -73,10 +73,10 @@ yum install cmake
 
 #### Windows
 
-Fetch the latest binary from [Kitwares site](https://cmake.org/download/). The MSI installer will
-guide you through the 'Next-Next-Finish' process of installing. When prompted for adding CMake to
-the system or user PATH, you may want to approve for later convenience. Alternatively, you may
-extract the ZIP file manually.
+Fetch the latest binary from [Kitware](https://cmake.org/download/). The MSI installer will guide
+you through the 'Next-Next-Finish' process of installing. When prompted for adding CMake to the
+system or user PATH, you may want to approve for later convenience. Alternatively, you may extract
+the ZIP file manually.
 
 Optionally, you can use [Chocolatey](https://chocolatey.org/):
 
@@ -94,3 +94,12 @@ cmake version 3.5.1
 
 CMake suite maintained and supported by Kitware (kitware.com/cmake).
 ```
+
+## Lessons
+
+Now that you've got the high-level picture, continue learning CMake with the following lessons:
+
+- [Lesson 0: Hello CMake](Lesson0_HelloCMake/)
+- [Lesson 1: Compile C/C++](Lesson1_CompileC_CPP/)
+- [Lesson 2: Link C/C++](Lesson2_LinkC_CPP/)
+- [Lesson 3: Dependencies](Lesson3_Dependecies/)
