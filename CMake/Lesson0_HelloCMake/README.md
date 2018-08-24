@@ -20,43 +20,43 @@ steps in order: __configuration__ and __generation__.
 
 ### Configure
 
-The configure step is the first. This is when CMake parses and processes the CMake scripts the user
-provides. Errors in the scripts, may them be syntactic or logical, will produce configuration-time
+The configure step is first. This is when CMake parses and processes the CMake scripts the user
+provides. Errors in the scripts, whether syntactic or logical, will produce configuration-time
 errors which more often than not will halt the processing of the CMake scripts, aborting the entire
-process. Some logical errors CMake cannot forsee (much like run-time errors in all programming
+process. Some logical errors that CMake cannot forsee (much like run-time errors in all programming
 languages) will create errors during the build process.
 
 ### Generation
 
 Once the scripts have been processed and no errors have been encountered, CMake enters the makefile
 generation phase. This is the time when the set of processed CMake commands are turned into
-makefiles which are written to disk.
+makefiles, which are written to disk.
 
-Do not be taunted by the amount of makefiles generated. They are logically equivalent to whatever
-was in the CMake scripts. The reason for their complexity is for them to be fast and produce nice,
-human readable output. They are __generated files__ and are __not meant for editing__ (or even
+Do not be alarmed by the amount of makefiles generated. They are logically equivalent to whatever
+was in the CMake scripts. This complexity allows them to execute quickly and produce nice,
+human-readable output. They are __generated files__ and are __not meant for editing__ (or even
 understanding).
 
 ## CMake scripting language
 
 Perhaps the most daunting part of CMake is its scripting language. Compared to modern script
 languages, CMake has a fairly simple, unexpressive scripting language. The reason for its
-simplicity, is that it is the common denominator of all build systems. It does not wish to surface
+simplicity is that it is the common denominator of all build systems. It does not wish to surface
 features which are complicated (or impossible) to implement in any back-end.
 
-Afterall, a simple language is easy to learn.
+Plus, a simple language is easy to learn.
 
 ### Functions (and flow control and variables)
 
-CMakes scripting language is as simple as it gets. There are variables, functions and a few flow
-control constructs.
+CMake's scripting language is as simple as it gets. There are variables, functions, and a few
+flow-control constructs.
 
-The interesting thing about these is that all these manifest as functions. Both "declaring" a
-variables as well as assigning a value to it is done through a function. There is no real variable
-declaration, other than creating an empty varible with the given name.
+The interesting thing is that all these manifest as functions. Both "declaring" variables as well as
+assigning values is done through functions. There is no real variable declaration other than
+creating an empty varible with the given name.
 
-Flow control also manifests through function calls, at least syntactically. Ultimately CMake scripts
-look like a series of function calls with nothing in between.
+Flow control also manifests through function calls, at least syntactically. Ultimately, CMake
+scripts look like a series of function calls with nothing in between.
 
 A function call (as one might guess from the previous code snippet) looks like the following:
 
@@ -64,8 +64,8 @@ A function call (as one might guess from the previous code snippet) looks like t
 function(ARG1 ARG2...)
 ```
 
-where `function` is the name of the funciton, and `ARG1` and `ARG2` are arguments to it. _(... only
-indicates that a function may have an arbitrary number of arguments)_ Note, that CMake is
+where `function` is the name of the function, and `ARG1` and `ARG2` are arguments to it. (The `...`
+only indicates that a function may have an arbitrary number of arguments.) Note that CMake is
 case-insensitive regarding function names, so
 
 ```CMake
@@ -78,16 +78,16 @@ works equally well, just as
 function (ARG1 ARG2...)
 ```
 
-denoting white-space insensitivity between function names and their arguments and in between
-function invocations. The same cannot be said for arguments, as there is no delimiting character
-between arguments. _(see later Types.)_
+with arbitrary white-space between function names, their arguments, and in between function
+invocations. The same cannot be said for arguments, as there is no delimiting character between
+arguments. _(See [Types](#types) below.)_
 
 One will encounter just about all of the above styles in the wild. Use a style that is most readable
 to you.
 
 _NOTE: advanced CMake users might have noticed I have abused the `function` "keyword" which is
 actually a built-in function name used to define user-defined functions. This crime was done solely
-for the sake of syntax highlight in Markdown. User-defined functions will come much later in the
+for the sake of syntax highlighting in Markdown. User-defined functions will come much later in the
 tutorial, as one can get 95% of the way without custom functions._
 
 ### Types
@@ -96,9 +96,9 @@ Perhaps the most troubling part of the language is its type system, or to be pre
 it. The only type is the _string_ type. __Everything__ is a string in CMake! With this clear, many
 of the peculiarities will become apparent.
 
-Because CMake has been around for some time, the scripting language evolved over time to be more
-user-friendly, one may encounter coding style that is different from the one presented here. These
-differences serve as good examples to understand how everything is a string, as well as the way how
+Because CMake has been around for some time, and the scripting language evolved over time to be more
+user-friendly, one may encounter coding styles that are different from the one presented here. These
+differences serve as good examples to understand that everything is a string, as well as the way
 variables behave.
 
 ### Variables
@@ -114,11 +114,11 @@ set(MYVAR "Value of my variable")
 ```
 
 The `set` function is used to create new variables, set the contents of existing ones, as well as
-"declare" a variable. Quotation marks needed because there is not much difference in having an empty
-variable as opposed to not having one at all. _(The difference is detectable, but essentially is
-able to code only a single bit of information.)_
+"declare" a variable. Quotation marks are needed because there is not much difference in having an
+empty variable as opposed to not having one at all. _(The difference is detectable, but essentially
+is able to code only a single bit of information.)_
 
-We have already promised (and not yet proven that)
+We have already promised (but not yet proven that)
 
 ```CMake
 message("Hello, CMake!")
@@ -142,17 +142,16 @@ GREETING
 -- Build files have been written to: ...
 ```
 
-Why don't we see the message we actually wanted to? Starting from CMake 3.0 (which means every
-script from the past 3-4 years) one is allowed to emit the quatation marks to denote a string.
-Therefor
+Why don't we see the message we actually wanted to? Starting from CMake 3.0 (which means most
+scripts since 2015), one is allowed to omit the quotation marks to denote a string. Therefore
 
 ```CMake
 message(GREETING)
 ```
 
-Is nothing more than providing an all capitalized string as the argument to `message`. If we
-actually wanted to get the contents of our variable named `GREETING`, we would have to "dereference"
-its name. Users of Bash will find dereferencing familiar. The script
+does nothing more than provide an all-capitalized string as the argument to `message`. If we
+actually wanted to get the _contents_ of our variable named `GREETING`, we would have to
+"dereference" its name. Users of Bash will find dereferencing familiar. The script
 
 ```CMake
 set(GREETING "Hello, CMake!")
@@ -160,7 +159,7 @@ set(GREETING "Hello, CMake!")
 message(${GREETING})
 ```
 
-will output the exptected
+will output the expected
 
 ```
 Hello, CMake!
@@ -169,8 +168,7 @@ Hello, CMake!
 -- Build files have been written to: ...
 ```
 
-The ability to omit quotation marks do denote strings (really, the only type) has some interesting
-consequences.
+The ability to omit quotation marks around strings has some interesting consequences.
 
 ```CMake
 set(VERB Hello)
@@ -181,9 +179,9 @@ set(GREETING "${VERB}, ${NOUN}!")
 message(${GREETING})
 ```
 
-This example apart from showing that dereferencing is "stronger" than quotation marks actually
+This example, apart from showing that dereferencing is "stronger" than quotation marks, actually
 outputs what we'd expect. What happens if we omit the quotation marks, which we've learned we are
-allowed to?
+allowed to do?
 
 ```CMake
 set(VERB Hello)
@@ -194,7 +192,7 @@ set(GREETING ${VERB}, ${NOUN}!)
 message(${GREETING})
 ```
 
-Output is
+outputs
 
 ```
 Hello,CMake!
@@ -211,9 +209,9 @@ message("message to display" ...)
 ```
 
 The `message` command takes an arbitrary number of string to display, which it will concatenate
-without any delimiters. Without placing quotation marks around `${VERB}, ${NOUN}!`, the two became
-separate function arguments. The only time one needs quotation marks, is if he/she wishes to guard
-spaces from becoming white-spaces.
+without any joining characters. Without placing quotation marks around `${VERB}, ${NOUN}!`, the two
+became separate function arguments. The only time one needs quotation marks, is if he/she wishes to
+guard spaces from becoming white-spaces.
 
 If we wanted to concatenate two strings (fairly common when assembling file paths for eg.) we could
 do so with
@@ -301,10 +299,10 @@ my_project -+
             README.md
 ```
 
-In this case, we could either create a `build` folder inside `my_project`, or we could create one
-that is totally unrelated to it.
+In this case, we could either create a `build` folder inside `my_project`, or we could create a
+`build` folder in a totally different location.
 
-Before we actually invoke CMake, there is one more command useful to be familiar with to speed up
+Before we actually invoke CMake, there is one more useful command to be familiar with to speed up
 the process. While our original
 
 ```CMake
@@ -326,21 +324,22 @@ and command-line, this detection takes time, which for the moment is totally unn
 The `project` function takes a project name, after which one may specify the languages that the
 project will use. As a side-effect, it will create variables we might use later on.
 
-As for the actual invocation, let's say we created a `build` subdirectory. From there, we might say
+As for the actual invocation, let's say we created a `build` subdirectory. Inside that directory, we
+might give the following command:
 
 | Linux | Windows |
 | ----- | ------- |
 | `cmake ../` | `cmake -G "NMake Makefiles" ..\` |
 
-which will instruct cmake, to look for a CMakeLists.txt file one folder up from the working
+which will instruct cmake to look for a `CMakeLists.txt` file one folder up from the working
 directory. The path provided may be relative or absolute. Makefiles will be generated in the working
 directory (the place from where we invoked CMake).
 
-Unfortunately, there is no way to tell CMake, which is the default generator we would like to use
-system wide, and the default on Windows is `Visual Studio 15 2017`. The generated MSBuild files are
+Unfortunately, there is no way to tell CMake which is the default generator we would like to use
+system wide. The default on Windows is `Visual Studio 15 2017`; the generated MSBuild files are
 fairly verbose on the command-line and not ideal for learning.
 
-_If the extra typing troubles Windows users, bare with me, because ultimately we will leave behind
+_If the extra typing troubles Windows users, bear with me, because ultimately we will leave behind
 the command-line as it is and use CMake from an IDE that supports it. CLI usage is solely for the
 sake of better understanding what's going on under the hood._
 
@@ -375,26 +374,26 @@ $
 The second `cmake --build .` invocation is asking cmake to call on the generated build system to
 execute the makefiles.
 
-Notice how nothing happens once we execute the generated makefiles. Of course, because there was no
-actual work placed in the CMake scripts. The `message` command only has meaning at
+Notice how nothing happens once we execute the generated makefiles. This is to be expected, because
+there was no actual work placed in the CMake scripts. The `message` command only has meaning at
 configuration-time, hence the message we see __before__ we see the "Configuration done" message.
 
 ## Debugging
 
 Even though the reader has been warned not to do too much in CMake other than getting a build going,
 experienced users will venture into doing fairly complex things. In such cases, and when one is
-still learning CMake, it is bound to happen that things go wrong withing the CMake scripts. There
-are three tools available for debugging.
+still learning CMake, it is bound to happen that things go wrong within the CMake scripts. There are
+three tools available for debugging.
 
-### message
+### message()
 
 The `message` command is the CMake equivalent of the C-runtime `printf` function. It is useful when
-one suspect that the value of a variable is not quite what one wished it to be.
+one suspects that the value of a variable is not quite what one wished it to be.
 
 ### Documentation
 
 Speaking of `message`, this is the opportune moment to introduce the user to the
-[documentation](https://cmake.org/documentation/) which is a most useful resource for finding the
+[cmake documentation](https://cmake.org/documentation/) which is a most useful resource for finding the
 capabilities of all commands available, as well as a [list of useful
 variables](https://cmake.org/Wiki/CMake_Useful_Variables). Elements of both resources will gradually
 be introduced throughout this tutorial.
@@ -407,15 +406,15 @@ that the actual definition is:
 message([<mode>] "message to display" ...)
 ```
 
-Beside it accepting an arbitrary number of strings to display, there is also an optional first
-argument, regarding the seriousness of the message. The docs are self-explanatory, no further
+Besides accepting an arbitrary number of strings to display, there is also an optional first
+argument to indicate the seriousness of the message. The docs are self-explanatory, no further
 comments needed beside: __this is the single most useful command when learning CMake__.
 
 ### Verbose makefiles
 
-When CMake configures without errors, the values of all variables seem fine, yet still compilation
-fails with compiler or linker errors, it might be useful to check on the actual tasks executed.
-__The proper way__ to do so __is not by looking at the generated makefiles__.
+CMake may configure without errors, and the values of all variables may seem fine, yet still fail
+compilation with compiler or linker errors. In this case, it might be useful to check the actual
+tasks executed. __The proper way__ to do so __is not by looking at the generated makefiles__.
 
 Verbose makefiles print out every command executed by the build system. The means of obtaining a
 verbose invocation depends on the target generator.
