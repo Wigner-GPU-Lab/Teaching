@@ -228,6 +228,55 @@ clFFTTargets.cmake
 clFFTTargets-debug.cmake
 ```
 
+## Guiding Find Module and Package Config scripts
+
+### `CMAKE_MODULE_PATH`
+
+When shipping Find Module scripts in non-system locations, one may see error messages containing the following when using the following snippet:
+
+**Snippet**
+```CMake
+find_package(MyFavoriteLib REQUIRED)
+```
+
+**Error**
+```
+CMake Error at CMakeLists.txt:1 (find_package):
+  By not providing "FindMyFavoriteLib.cmake" in CMAKE_MODULE_PATH this
+  project has asked CMake to find a package configuration file provided by
+  "MyFavoriteLib", but CMake did not find one.
+```
+
+The error message is pretty self explanatory. CMake by default looks in its own installation path for Find Module scripts. A few ship with CMake itself, such as the earlier mentioned `FindMPI.cmake`. If one has to ship such a script, or is installed in a location that CMake is unaware of, one has to add it to the `CMAKE_MODULE_PATH` variable. If it's located in the canonical location as suggested in the earlier section, one may do the following:
+
+```CMake
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
+```
+
+_(This snippet assumes the root `CMakeLists.txt` file contains a project statement and the script engine has not encountered another one up until this statement. See later for a set of do's and don'ts in the Modern CMake style guide.)_
+
+### `CMAKE_PREFIX_PATH`
+
+In our previous error message, we have omitted its other half, which reads as:
+
+**Error**
+```
+  Could not find a package configuration file provided by "MyFavoriteLib"
+  with any of the following names:
+
+    MyFavoriteLibConfig.cmake
+    myfavoritelib-config.cmake
+
+  Add the installation prefix of "MyFavoriteLib" to CMAKE_PREFIX_PATH or set
+  "MyFavoriteLib_DIR" to a directory containing one of the above files.  If
+  "MyFavoriteLib" provides a separate development package or SDK, be sure it
+  has been installed.
+```
+
+Once again, we need not think much on the fix. If we intended on using a Package Config script instead of a Find Module one, CMake is going to look for scripts named in a given convention that differs from the previous convention.
+
+Because Package Config scripts are typically found in the installation tree of the given library, it is most likely unique to every machine, one has to trivially modify the solution to our previous problem.
+
 ### Package registry
 
 It is sufficient to know that these are the files CMake will be looking for. However, CMake knows
