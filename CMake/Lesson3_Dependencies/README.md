@@ -275,13 +275,17 @@ In our previous error message, we have omitted its other half, which reads as:
 
 Once again, we need not think much on the fix. If we intended on using a Package Config script instead of a Find Module one, CMake is going to look for scripts named in a given convention that differs from the previous convention.
 
-Because Package Config scripts are typically found in the installation tree of the given library, it is most likely unique to every machine, one has to trivially modify the solution to our previous problem.
+Because Package Config scripts are typically found in the installation tree of the given library, it is most likely unique to every machine. Therefore it is not wise to bake the fix into the build scripts, as they will not be portable. Instead, we provide the addition on the command-line with the `-D` switch, which allows us to define variables when invoking CMake, instead of using `set()` inside the scripts.
+
+```
+cmake -D CMAKE_PREFIX_PATH=/comma/semi-colon;/list/of/folders;/which/contain/config/scripts
+```
+
+_(One may recall, that in CMake everything is a string. Earlier, we used the `list(APPEND)` function to append to `CMAKE_MODULE_PATH`. Actually, CMake lists as [noted in the docs] are nothing more, than a single, semi-colon delimited string. This manifests in the previous invocation.)_
 
 ### Package registry
 
-It is sufficient to know that these are the files CMake will be looking for. However, CMake knows
-nothing about where a user will place installs. In order to tell CMake where package config scripts
-reside on disk, we must register this folder in CMake's [package registry].
+Even with a moderate number of packages used for a build, the length of the command-line invocation can rapidly grow to unwieldy lengths. In order to keep this problem at bay, one may configure an IDE to always add these paths (more on this later in the IDE lesson), or one may register these folders in CMake's [package registry].
 
 Some well written CMake scripts may even register the installations by themselves, though generally
 this task remains an exercise for the user. (More on this later in the package authoring lesson.)
@@ -377,10 +381,21 @@ set_target_properties(App PROPERTIES AUTOMOC ON)
 Qt5 contains a few more such extra compilation steps, again guided by native CMake support, but
 explaining all of them remain outside the scope of this lesson.
 
+## Toolchains
 
+CMake also has the notion of toolchains, which may be used to control/guide dependency detection. A toolchain in general is a set of executables that are used to transform source code into binaries. _(... roughly speaking.)_ CMake has direct support for controlling on how to pick up such tools from the system via so called [toolchain files].
+
+These toolchain files are loaded fairly early during configuration and although meant for prescribing the use of a given toolset, it may also be provided to provide any set of variables and also to run custom scripts.
+
+_NOTE: [Vcpkg], a cross-platform pacakge manager written partly in CMake (ab)uses this feature to override regular dependency detection and pick up self-hosted builds of 1000+ libraries. This is the single most useful package manager for users of CMake, especially on Windows, which lacks a package manager hosting development packages for myriads of open-source libraries._
+
+To provide a toolchain file, provide the `CMAKE_TOOLCHAIN_FILE` variable when invoking CMake, pointing it to the path to such a file.
 
 [clFFT]: https://github.com/clMathLibraries/clFFT
+[noted in the docs]: https://cmake.org/cmake/help/latest/command/list.html#introduction
 [package registry]: https://cmake.org/cmake/help/latest/manual/cmake-packages.7.html?highlight=package#package-registry
+[toolchain files]: https://cmake.org/cmake/help/latest/variable/CMAKE_TOOLCHAIN_FILE.html?highlight=cmake_toolchain_file
+[Vcpkg]: https://github.com/Microsoft/vcpkg
 
 <br><br>
 
