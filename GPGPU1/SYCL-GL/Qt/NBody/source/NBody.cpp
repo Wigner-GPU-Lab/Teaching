@@ -13,10 +13,12 @@ NBody::NBody(std::size_t plat_id,
 	, mass_min(100.f)
 	, mass_max(500.f)
 	, dev_id(0)
-    , posBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{0} },
-                  cl::sycl::buffer<real4>{ cl::sycl::range<1>{0} } } }
-    , velBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{0} },
-                  cl::sycl::buffer<real4>{ cl::sycl::range<1>{0} } } }
+    //, CL_velBuffs{ { cl::Buffer{ CLcontext(), CL_MEM_ALLOC_HOST_PTR | CL_MEM_WRITE_ONLY, particle_count * sizeof(real4) },
+    //                 cl::Buffer{ CLcontext(), CL_MEM_ALLOC_HOST_PTR | CL_MEM_WRITE_ONLY, particle_count * sizeof(real4) } } }
+    , posBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} },
+                  cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} } } }
+    , velBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} },
+                  cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} } } }
     , dist(3 * std::max({ x_abs_range,
                           y_abs_range ,
                           z_abs_range }))
@@ -130,32 +132,44 @@ void NBody::initializeCL()
 
     context = cl::sycl::context{ CLcontext()() };
     device = cl::sycl::device{ CLdevices().at(dev_id)() };
-    compute_queue = cl::sycl::queue{ CLcommandqueues().at(dev_id)() };
+    compute_queue = cl::sycl::queue{ CLcommandqueues().at(dev_id)(), context };
 
 	qDebug("NBody: Querying device capabilities");
-	cl_khr_gl_event_supported = device.get_info<cl::sycl::info::device::extensions>().find("cl_khr_gl_event", 0) != std::string::npos;
+    auto extensions = device.get_info<cl::sycl::info::device::extensions>();
+	cl_khr_gl_event_supported = std::find(extensions.cbegin(), extensions.cend(), "cl_khr_gl_event") != extensions.cend();
 
 	// Create Buffers
 	qDebug("NBody: Creating SYCL buffer objects");
-    for (auto& velBuff : velBuffs)
+    for (auto& CL_velBuff : CL_velBuffs)
     {
-        velBuff = cl::sycl::buffer<real4>{ cl::sycl::range<1>{particle_count} };
+        CL_velBuffs = { cl::Buffer{ CLcontext(), CL_MEM_HOST_WRITE_ONLY | CL_MEM_READ_WRITE, particle_count * sizeof(real4) },
+                        cl::Buffer{ CLcontext(), CL_MEM_HOST_WRITE_ONLY | CL_MEM_READ_WRITE, particle_count * sizeof(real4) } };
+    }
 
-        auto access = velBuff.get_access<cl::sycl::access::mode::write>();
+    std::transform(CL_velBuffs.cbegin(), CL_velBuffs.cend(),
+                   velBuffs.begin(),
+                   [&](const cl::Buffer& CL_velBuff)
+    {
+        cl::sycl::buffer<real4> velBuff{ CL_velBuff(), context };
+
+        auto access = velBuff.get_access<cl::sycl::access::mode::discard_write>();
 
         std::fill_n(access.get_pointer(), access.get_count(), real4{ 0.f, 0.f, 0.f, 0.f });
-    }
+
+        return velBuff;
+    });
 
 	std::transform(vbos.cbegin(), vbos.cend(), posBuffs.begin(), [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
 	{
-        return cl::sycl::buffer<real4>{ cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() }(), compute_queue };
+        return cl::sycl::buffer<real4>{ cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() }(), context };
 	});
-    compute_queue.wait_and_throw();
 
 	// Init bloat vars
-	std::transform(vbos.cbegin(), vbos.cend(), std::back_inserter(interop_resources), [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
+	std::transform(vbos.cbegin(), vbos.cend(),
+                   std::back_inserter(interop_resources),
+                   [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
 	{
-		return /*cl::Memory(*/ cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() }/*() )*/;
+		return cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() };
 	});
 
 	qDebug("NBody: Leaving initializeCL");

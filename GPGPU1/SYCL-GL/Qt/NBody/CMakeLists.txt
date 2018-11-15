@@ -30,7 +30,8 @@ add_executable(${Target_Name} ${Sources} ${Headers} ${Shaders})
 # Target include directories
 target_include_directories (${Target_Name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
                                                   ${CMAKE_CURRENT_BINARY_DIR}/include
-                                                  ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
+                                                  ${Qt5Gui_PRIVATE_INCLUDE_DIRS}
+												  ${ComputeCpp_INCLUDE_DIRS})
 
 # Target link directives
 target_link_libraries(${Target_Name} PUBLIC Qt5::Core Qt5::Gui Qt5::OpenGL Qt5::WinMain
@@ -42,8 +43,8 @@ set_target_properties(${Target_Name} PROPERTIES CXX_STANDARD 14
                                                 AUTOMOC ON)
 
 # Apply the ComputeCpp compiler to select source files (containing SYCL code)
-add_sycl_to_target(${Target_Name} ${CMAKE_CURRENT_BINARY_DIR}
-                   ${CMAKE_CURRENT_SOURCE_DIR}/source/NBodyStep.cpp)
+add_sycl_to_target(TARGET ${Target_Name}
+                   SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/source/NBodyStep.cpp)
 
 # Create source groups for IDE
 source_group ("Sources" FILES ${Sources})

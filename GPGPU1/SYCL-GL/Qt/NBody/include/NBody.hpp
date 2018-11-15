@@ -78,6 +78,7 @@ private:
     cl::sycl::queue compute_queue;          // CommandQueue
     bool cl_khr_gl_event_supported;
 
+    std::array<cl::Buffer, 2> CL_velBuffs;             // Simulation data buffers
 	std::array<cl::sycl::buffer<real4>, 2> posBuffs;   // Simulation data buffers
 	std::array<cl::sycl::buffer<real4>, 2> velBuffs;   // Simulation data buffers
 	std::array<cl::Event, 2> acquire_release;
@@ -102,13 +103,4 @@ private:
 	void mouseWheel(QWheelEvent* event_in); // Handle mouse wheel movement
 
 	void setMatrices();                     // Update shader matrices
-    /*
-	QVector3D vecEye;                     // Camera position
-	QVector3D vecTarget;                  // Viewed point position
-    QVector3D vecUp;                      // Up vector
-
-	QMatrix4x4 matWorld;                  // World matrix
-	QMatrix4x4 matView;                   // Viewing matrix
-	QMatrix4x4 matProj;                   // Perspective projection matrix
-    */
 };

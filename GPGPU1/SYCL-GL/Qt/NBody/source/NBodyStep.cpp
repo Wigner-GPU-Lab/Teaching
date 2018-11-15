@@ -6,6 +6,8 @@
 #include <limits>   // std::numeric_limits
 
 
+struct NBodyStepKernel;
+
 template <typename T, std::size_t J>
 struct unroll_step
 {
@@ -53,19 +55,21 @@ void NBodyStep(cl::sycl::queue sycl_queue,
     //         
     //           See: opencl-1.2-extensions.pdf (Rev. 15. Chapter 9.8.5)
 
-    std::array<cl::Event, 2> acquire_release;
-
-    cl::CommandQueue{ sycl_queue.get() }.enqueueAcquireGLObjects(&gl_resources, nullptr, &acquire_release[0]);
+    cl::Event acquire, release;
+    
+    cl::CommandQueue{ sycl_queue.get() }.enqueueAcquireGLObjects(&gl_resources, nullptr, &acquire);
+    acquire.wait();
 
     sycl_queue.submit([&](cl::sycl::handler& cgh)
     {
-        auto pos =     pos_double_buf[DoubleBuffer::Front].get_access<cl::sycl::access::mode::read>();
-        auto new_pos = pos_double_buf[DoubleBuffer::Back].get_access<cl::sycl::access::mode::write>();
-        auto vel =     vel_double_buf[DoubleBuffer::Front].get_access<cl::sycl::access::mode::read>();
-        auto new_vel = vel_double_buf[DoubleBuffer::Back].get_access<cl::sycl::access::mode::write>();
+        auto pos = pos_double_buf[DoubleBuffer::Front].get_access<cl::sycl::access::mode::read>();
+        auto new_pos = pos_double_buf[DoubleBuffer::Back].get_access<cl::sycl::access::mode::discard_write>();
+        auto vel = vel_double_buf[DoubleBuffer::Front].get_access<cl::sycl::access::mode::read>();
+        auto new_vel = vel_double_buf[DoubleBuffer::Back].get_access<cl::sycl::access::mode::discard_write>();
 
-        cgh.parallel_for<class NBody>(cl::sycl::range<1>{ particle_count }, [=](const cl::sycl::item<1> item)
+        cgh.parallel_for<NBodyStepKernel>(cl::sycl::range<1>{ particle_count }, [=](const cl::sycl::item<1> item)
         {
+            /*
             real4 myPos = pos[item];
             real4 acc = { 0.f, 0.f, 0.f, 0.f };
             real epsSqr = std::numeric_limits<real>::epsilon();
@@ -120,14 +124,51 @@ void NBodyStep(cl::sycl::queue sycl_queue,
             // write to global memory
             new_pos[item] = newPos;
             new_vel[item] = newVel;
+            */
+            /*
+            new_pos[item] = pos[item];
+            new_vel[item] = vel[item];
+            */
+            real4 myPos = pos[item];
+            real4 acc = { 0.f, 0.f, 0.f, 0.f };
+            real epsSqr = std::numeric_limits<real>::epsilon();
+            real deltaTime = real(0.005);
+
+            auto xyz = [](real4& vec) { return vec.swizzle<0, 1, 2>(); };
+            for (int i = 0; i < particle_count; ++i)
+            {
+                real4 p = pos[i];
+                real4 r;
+                xyz(r) = xyz(p) - xyz(myPos);
+                real distSqr = r.x() * r.x() + r.y() * r.y() + r.z() * r.z();
+
+                real invDist = 1.0f / sqrt(distSqr + epsSqr);
+                real invDistCube = invDist * invDist * invDist;
+                real s = p.w() * invDistCube;
+
+                // accumulate effect of all particles
+                auto eff = s * xyz(r);
+                acc += real4{ eff.x(), eff.y(), eff.z(), 0.0f };
+            }
+
+            real4 oldVel = vel[item];
+
+            // updated position and velocity
+            real4 newPos;
+            xyz(newPos) = xyz(myPos) + xyz(oldVel) * deltaTime + xyz(acc) * real(0.5) * deltaTime * deltaTime;
+            newPos.w() = myPos.w();
+
+            real4 newVel;
+            xyz(newVel) = xyz(oldVel) + xyz(acc) * deltaTime;
+            newVel.w() = oldVel.w();
         });
     });
     
-    cl::CommandQueue{ sycl_queue.get() }.enqueueReleaseGLObjects(&gl_resources, nullptr, &acquire_release[1]);
+    cl::CommandQueue{ sycl_queue.get() }.enqueueReleaseGLObjects(&gl_resources, nullptr, &release);
     
     // Wait for all OpenCL commands to finish
     if (!fast_interop)
         cl::finish();
     else
-        acquire_release[1].wait();
+        release.wait();
 }

@@ -6,6 +6,16 @@
 // Custom made includes
 #include <NBody.hpp>
 
+// SYCL include
+#ifdef _MSC_VER 
+#pragma warning( push )
+#pragma warning( disable : 4310 ) /* Prevents warning about cast truncates constant value */
+#pragma warning( disable : 4100 ) /* Prevents warning about unreferenced formal parameter */
+#endif
+#include <CL/sycl.hpp>
+#ifdef _MSC_VER 
+#pragma warning( pop )
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -25,8 +35,8 @@ int main(int argc, char *argv[])
 
     parser.process(app);
 
-    cl_bitfield dev_type;
-    std::size_t plat_id, count;
+    cl_bitfield dev_type = CL_DEVICE_TYPE_DEFAULT;
+    std::size_t plat_id = 0u, count = 8192u;
 	if(!parser.value("device").isEmpty())
     {
         if(parser.value("device") == "cpu")
@@ -40,22 +50,20 @@ int main(int argc, char *argv[])
             qFatal("NBody: Invalid device type: valid values are [cpu|gpu|acc]. Using CL_DEVICE_TYPE_DEFAULT instead.");
         }
     }
-    else dev_type = CL_DEVICE_TYPE_DEFAULT;
     if(!parser.value("platformId").isEmpty())
     {
         plat_id = parser.value("platformId").toULong();
     }
-    else plat_id = 0;
     if(!parser.value("particles").isEmpty())
     {
         count = parser.value("particles").toULong();
     }
-    else count = 8192u;
 
     NBody nbody(plat_id, dev_type, count);
-    nbody.setVisibility(QWindow::AutomaticVisibility);
-    nbody.setWidth(1280);
-    nbody.setHeight(720);
+    nbody.setVisibility(QWindow::Maximized);
+    //nbody.setVisibility(QWindow::AutomaticVisibility);
+    //nbody.setWidth(1280);
+    //nbody.setHeight(720);
     nbody.setMaxFPS(60);
     //nbody.setMaxIPS(60);
 	nbody.setAnimating(true);
