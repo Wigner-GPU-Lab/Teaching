@@ -2,17 +2,16 @@
 #include <iostream>
 #include <cmath>
 #include <typeinfo>
-#include <memory>
 #include <algorithm>
 
 //identity function
 //template<typename T> T id(T val){ return val; }
 
 //identity as lambda
-auto id = [](auto x) { return x; };
+inline auto id = [](auto x){ return x; };
 
 //composition as lambda
-auto comp = [](auto f)
+inline auto comp = [](auto f)
 {
 	return [&](auto g)
 	{
@@ -24,16 +23,20 @@ auto comp = [](auto f)
 };
 
 //partial application as lambda
-auto pa = [](auto f, auto x) { return [&](auto... ys) { return f(x, ys...); }; };
+inline auto pa = [](auto f, auto x) { return [&](auto... ys) { return f(x, ys...); }; };
 
 //some functions for fun
-auto plus_one = [](auto x) { return x + 1; };
-auto mul_two = [](auto x) { return x * 2; };
-auto root = [](auto x) { return std::sqrt(x); };
-auto cast_to_double = [](auto x) { return (double)x; };
+inline auto plus_one = [](auto x) { return x + 1; };
+inline auto mul_two = [](auto x) { return x * 2; };
+inline auto root = [](auto x) { return std::sqrt(x); };
+inline auto cast_to_double = [](auto x) { return (double)x; };
+
+//helper base overload #clang bug
+template<template<typename> typename Fc, typename F, typename A, typename B = typename std::result_of<F(A)>::type>
+Fc<B> fmap_impl(F f, Fc<A> in){ return Fc<B>{}; }
 
 //fmap wrapper as function object
-auto fmap = [](auto func, auto functor) { return fmap_impl(func, functor); };
+inline auto fmap = [](auto func, auto functor) { return fmap_impl(func, functor); };
 
 //Trivial Functor
 template<typename T> struct Trivial
@@ -42,9 +45,8 @@ template<typename T> struct Trivial
 };
 
 //fmap implementation as a function template
-template<typename F, typename A,
-	typename B = typename std::result_of<F(A)>::type>
-	Trivial<B> fmap_impl(F f, Trivial<A> in)
+template<typename F, typename A, typename B = typename std::result_of<F(A)>::type>
+Trivial<B> fmap_impl(F f, Trivial<A> in)
 {
 	return Trivial<B>{ f(in.value) };
 }
@@ -71,43 +73,22 @@ void TestTrivialFunctor()
 }
 
 //----------------------------------
-struct Just {};
-struct Nothing {};
 
-//Maybe functor:
-//template<typename T> struct Maybe
-//{
-//	T value;
-//	bool nothing;
-//
-//	Maybe(Nothing            ):value{ *((T*)this) }, nothing{true}{}
-//	Maybe(Just,    T value_in):value{value_in},      nothing{false}{}
-//  bool is_valid() const { return nothing ? false : true; }
-//};
+#include <optional>
 
-template<typename T> struct Maybe
-{
-	std::unique_ptr<T> p;
-
-	Maybe(Nothing) :p{ nullptr } {}
-	Maybe(Just, T value_in) :p{ new T{ value_in } } {}
-	Maybe(Maybe const& cpy) : p{ cpy.is_valid() ? new T{ cpy.value() } : nullptr } {}
-
-	T    value()    const { return *p; }
-	bool is_valid() const { return p == nullptr ? false : true; }
-};
+template<typename A> using Maybe = std::optional<A>;
 
 //fmap implementation as a function template
 template<typename F, typename A, typename B = typename std::result_of<F(A)>::type>
 Maybe<B> fmap_impl(F f, Maybe<A> in)
 {
-	return in.is_valid() ? Maybe<B>{ Just(), f(in.value()) } : Maybe<B>{ Nothing() };
+	return in.has_value() ? Maybe<B>{ f(in.value()) } : Maybe<B>{};
 }
 
 template<typename T>
 std::ostream& operator<< (std::ostream& o, Maybe<T> const& m)
 {
-	if (m.is_valid()) { o << "Just " << (m.value()); }
+	if (m.has_value()) { o << "Just " << (m.value()); }
 	else { o << "Empty"; }
 	return o;
 }
@@ -115,10 +96,8 @@ std::ostream& operator<< (std::ostream& o, Maybe<T> const& m)
 void TestMaybeFunctor()
 {
 	//instantiate the functor:
-	auto justx = Maybe<int>{ Just(), 42 };
-	auto empty = Maybe<int>{ Nothing() };
-
-	//auto q  =
+	auto justx = Maybe<int>{ 42 };
+	auto empty = Maybe<int>{    };
 
 	//Check identity:
 	auto test1a = fmap(id, justx);
@@ -157,29 +136,32 @@ template<template<typename> class Te> struct Template {};
 template<template<typename> class Functor, typename T>
 auto pure(T value) { return pure_impl(Template<Functor>(), value); }
 
-auto apply = [](auto ap_func, auto applicative) { return apply_impl(ap_func, applicative); };
+//helper base overload #clang bug
+template<template<typename> typename App, typename F, typename A, typename B = typename std::result_of<F(A)>::type>
+App<B> apply_impl(App<F> f, App<A> in){ return App<B>{}; }
+
+inline auto apply = [](auto ap_func, auto applicative) { return apply_impl(ap_func, applicative); };
 
 //Make Maybe Applicative:
 template<typename T>
 auto pure_impl(Template<Maybe>, T value)
 {
-	return Maybe<T>{ Just(), value };
+	return Maybe<T>{ value };
 };
 
 //apply implementation as a function template
-template<typename F, typename A,
-	typename B = typename std::result_of<F(A)>::type>
-	Maybe<B> apply_impl(Maybe<F> f, Maybe<A> in)
+template<typename F, typename A, typename B = typename std::result_of<F(A)>::type>
+Maybe<B> apply_impl(Maybe<F> f, Maybe<A> in)
 {
-	if (f.is_valid() && in.is_valid()) { return Maybe<B>{ Just(), (f.value())(in.value()) }; }
-	else { return Maybe<B>{ Nothing() }; }
+	if (f.has_value() && in.has_value()) { return Maybe<B>{ (f.value())(in.value()) }; }
+	else { return Maybe<B>{ }; }
 }
 
 void TestMaybeApplicative()
 {
 	//instantiate the functor:
-	auto justx = Maybe<int>{ Just(), 42 };
-	auto empty = Maybe<int>{ Nothing() };
+	auto justx = Maybe<int>{ 42 };
+	auto empty = Maybe<int>{    };
 
 	//Check identity:
 	auto test1a = apply(pure<Maybe>(id), justx);
@@ -208,16 +190,6 @@ void TestMaybeApplicative()
 
 //------------------------------------------------------
 
-//Monad methods:
-template<template<typename> class Applicative, typename T>
-auto ret(T value) { return ret_impl(Template<Applicative>(), value); }
-
-auto bind = [](auto m_func, auto monad) { return bind_impl(m_func, monad); };
-
-//Make Maybe a Monad:
-template<typename T>
-auto ret_impl(Template<Maybe>, T value) { return Maybe<T>{ Just(), value }; };
-
 //bind implementation as a function template
 //Helper to extract template argument type:
 template<typename T> struct GetTemplateArg;
@@ -227,13 +199,28 @@ struct GetTemplateArg<Te<T>>
 	using type = T;
 };
 
+//Monad methods:
+template<template<typename> class Applicative, typename T>
+auto ret(T value) { return ret_impl(Template<Applicative>(), value); }
+
+
+//helper base overload #clang bug
+template<template<typename> typename Mon, typename F, typename A, typename B = typename GetTemplateArg<typename std::result_of<F(A)>::type>::type>
+Mon<B> bind_impl(Mon<A> m, F f){ return Mon<B>{}; }
+
+inline auto bind = [](auto m_func, auto monad) { return bind_impl(m_func, monad); };
+
+//Make Maybe a Monad:
+template<typename T>
+auto ret_impl(Template<Maybe>, T value) { return Maybe<T>{ value }; };
+
 template<typename F, typename A,
 	typename B =
 	typename GetTemplateArg<typename std::result_of<F(A)>::type>::type>
 	Maybe<B> bind_impl(Maybe<A> m, F f)
 {
-	if (m.is_valid()) { return f(m.value()); }
-	else { return Maybe<B>{ Nothing() }; }
+	if (m.has_value()) { return f(m.value()); }
+	else { return Maybe<B>{ }; }
 }
 
 template<typename T, typename F>
@@ -243,14 +230,14 @@ void TestMaybeMonad()
 {
 	//instantiate the functor:
 	auto x = 42;
-	auto justx = Maybe<int>{ Just(), x };
-	auto empty = Maybe<int>{ Nothing() };
+	auto justx = Maybe<int>{ x };
+	auto empty = Maybe<int>{   };
 
 	//halve if even
-	auto f = [](int x) { return x % 2 == 0 ? Maybe<int>(Just(), x / 2) : Maybe<int>(Nothing()); };
+	auto f = [](int x) { return x % 2 == 0 ? Maybe<int>(x / 2) : Maybe<int>(); };
 
 	//root if non-negative
-	auto g = [](auto x) { return x >= 0 ? Maybe<double>(Just(), root(x)) : Maybe<double>(Nothing()); };
+	auto g = [](auto x) { return x >= 0 ? Maybe<double>(root(x)) : Maybe<double>(); };
 
 	//Check left identity:
 	auto test1a = ret<Maybe>(x) >> f;
