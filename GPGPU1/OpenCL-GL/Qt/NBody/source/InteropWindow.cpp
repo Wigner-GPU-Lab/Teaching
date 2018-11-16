@@ -489,7 +489,7 @@ void InteropWindow::checkGLerror()
 }
 
 
-bool InteropWindow::detectFormatMismatch(QSurfaceFormat& left, QSurfaceFormat& right)
+bool InteropWindow::detectFormatMismatch(QSurfaceFormat left, QSurfaceFormat right)
 {
     if(left.renderableType() != right.renderableType()) return true;
     if(left.majorVersion() != right.majorVersion()) return true;

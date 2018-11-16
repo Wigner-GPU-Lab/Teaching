@@ -132,7 +132,7 @@ private:
 
     QVector<cl_context_properties> interopCLcontextProps(const cl::Platform& plat);          // Context properties of interop context
 
-    bool detectFormatMismatch(QSurfaceFormat& left, QSurfaceFormat& right);
+    bool detectFormatMismatch(QSurfaceFormat left, QSurfaceFormat right);
     void printFormatMismatch();
     const char* convertCLerrorToString(cl_int error);
     const char* convertGLerrorToString(GLint error);
