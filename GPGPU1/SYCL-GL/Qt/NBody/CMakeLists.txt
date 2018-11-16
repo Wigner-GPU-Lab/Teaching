@@ -13,12 +13,12 @@ configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/include/NBody-Config.in.hpp"
 # Specify source and header files
 set (Sources source/Main.cpp
              source/NBody.cpp
-             source/NBodyStep.cpp
+             #source/NBodyStep.cpp
              source/InteropWindow.cpp)
 
 set (Headers include/InteropWindow.hpp
              include/NBody.hpp
-             include/NBodyStep.hpp
+             #include/NBodyStep.hpp
 			 ${CMAKE_CURRENT_BINARY_DIR}/include/NBody-Config.hpp)
 
 set (Shaders shader/Vertex.glsl
@@ -44,7 +44,7 @@ set_target_properties(${Target_Name} PROPERTIES CXX_STANDARD 14
 
 # Apply the ComputeCpp compiler to select source files (containing SYCL code)
 add_sycl_to_target(TARGET ${Target_Name}
-                   SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/source/NBodyStep.cpp)
+                   SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/source/NBody.cpp)
 
 # Create source groups for IDE
 source_group ("Sources" FILES ${Sources})

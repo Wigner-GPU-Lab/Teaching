@@ -32,6 +32,8 @@
 using real = cl_float;
 using real4 = cl::sycl::float4;
 
+namespace kernels { struct NBodyStep; }
+
 
 class NBody : public InteropWindow
 {
