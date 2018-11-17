@@ -34,7 +34,7 @@ target_include_directories (${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/include
 #target_include_directories (${PROJECT_NAME} PUBLIC ${OpenCL_INCLUDE_DIRS})
 
 # Specify required language standard
-set_target_properties (${PROJECT_NAME} PROPERTIES CXX_STANDARD 11
+set_target_properties (${PROJECT_NAME} PROPERTIES CXX_STANDARD 14
                                                   CXX_STANDARD_REQUIRED ON)
 
 # Invoke the ComputeCpp compiler and append output to the list of object files for linkage
