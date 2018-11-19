@@ -66,7 +66,7 @@ private:
 	// Simulation related variables
 	std::size_t particle_count;
 	real x_abs_range, y_abs_range, z_abs_range,
-		mass_min, mass_max;
+         mass_min, mass_max;
 
 	std::size_t dev_id;
 
@@ -80,10 +80,9 @@ private:
     cl::sycl::queue compute_queue;          // CommandQueue
     bool cl_khr_gl_event_supported;
 
-    std::array<cl::Buffer, 2> CL_velBuffs;             // Simulation data buffers
+    std::array<cl::BufferGL, 2> CL_posBuffs;
 	std::array<cl::sycl::buffer<real4>, 2> posBuffs;   // Simulation data buffers
 	std::array<cl::sycl::buffer<real4>, 2> velBuffs;   // Simulation data buffers
-	std::array<cl::Event, 2> acquire_release;
 
 	std::vector<cl::Memory> interop_resources;  // Bloat
 	std::vector<cl::Event> acquire_wait_list,   // Bloat

@@ -13,8 +13,6 @@ NBody::NBody(std::size_t plat_id,
 	, mass_min(100.f)
 	, mass_max(500.f)
 	, dev_id(0)
-    //, CL_velBuffs{ { cl::Buffer{ CLcontext(), CL_MEM_ALLOC_HOST_PTR | CL_MEM_WRITE_ONLY, particle_count * sizeof(real4) },
-    //                 cl::Buffer{ CLcontext(), CL_MEM_ALLOC_HOST_PTR | CL_MEM_WRITE_ONLY, particle_count * sizeof(real4) } } }
     , posBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} },
                   cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} } } }
     , velBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} },
@@ -139,38 +137,27 @@ void NBody::initializeCL()
 	cl_khr_gl_event_supported = std::find(extensions.cbegin(), extensions.cend(), "cl_khr_gl_event") != extensions.cend();
 
 	// Create Buffers
-	qDebug("NBody: Creating SYCL buffer objects");
-    for (auto& CL_velBuff : CL_velBuffs)
+    for (auto& velBuff : velBuffs)
     {
-        CL_velBuffs = { cl::Buffer{ CLcontext(), CL_MEM_HOST_WRITE_ONLY | CL_MEM_READ_WRITE, particle_count * sizeof(real4) },
-                        cl::Buffer{ CLcontext(), CL_MEM_HOST_WRITE_ONLY | CL_MEM_READ_WRITE, particle_count * sizeof(real4) } };
-    }
-
-    std::transform(CL_velBuffs.cbegin(), CL_velBuffs.cend(),
-                   velBuffs.begin(),
-                   [&](const cl::Buffer& CL_velBuff)
-    {
-        cl::sycl::buffer<real4> velBuff{ CL_velBuff(), context };
+        velBuff = cl::sycl::buffer<real4>{ cl::sycl::range<1>{ particle_count } };
 
         auto access = velBuff.get_access<cl::sycl::access::mode::discard_write>();
 
-        std::fill_n(access.get_pointer(), access.get_count(), real4{ 0.f, 0.f, 0.f, 0.f });
+        std::fill_n(access.get_pointer(), access.get_count(), real4{ 1, 1, 1, 1 });
+    }
 
-        return velBuff;
+    std::transform(vbos.cbegin(), vbos.cend(), CL_posBuffs.begin(), [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
+    {
+        return cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() };
     });
 
-	std::transform(vbos.cbegin(), vbos.cend(), posBuffs.begin(), [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
+	std::transform(CL_posBuffs.cbegin(), CL_posBuffs.cend(), posBuffs.begin(), [this](const cl::BufferGL& buff)
 	{
-        return cl::sycl::buffer<real4>{ cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() }(), context };
+        return cl::sycl::buffer<real4>{ buff(), context };
 	});
 
 	// Init bloat vars
-	std::transform(vbos.cbegin(), vbos.cend(),
-                   std::back_inserter(interop_resources),
-                   [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
-	{
-		return cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() };
-	});
+    std::copy(CL_posBuffs.cbegin(), CL_posBuffs.cend(), std::back_inserter(interop_resources));
 
 	qDebug("NBody: Leaving initializeCL");
 }
@@ -227,10 +214,10 @@ void NBody::updateScene()
 
     compute_queue.submit([&](cl::sycl::handler& cgh)
     {
-        auto pos = posBuffs[DoubleBuffer::Front].get_access<cl::sycl::access::mode::read_write>();
-        auto new_pos = posBuffs[DoubleBuffer::Back].get_access<cl::sycl::access::mode::read_write>();
-        auto vel = velBuffs[DoubleBuffer::Front].get_access<cl::sycl::access::mode::read_write>();
-        auto new_vel = velBuffs[DoubleBuffer::Back].get_access<cl::sycl::access::mode::read_write>();
+        auto pos = posBuffs[DoubleBuffer::Front].get_access<cl::sycl::access::mode::read>(cgh);
+        auto new_pos = posBuffs[DoubleBuffer::Back].get_access<cl::sycl::access::mode::write>(cgh);
+        auto vel = velBuffs[DoubleBuffer::Front].get_access<cl::sycl::access::mode::read>(cgh);
+        auto new_vel = velBuffs[DoubleBuffer::Back].get_access<cl::sycl::access::mode::write>(cgh);
 
         cgh.parallel_for<kernels::NBodyStep>(cl::sycl::range<1>{ particle_count }, [=](const cl::sycl::item<1> item)
         {
@@ -332,6 +319,14 @@ void NBody::updateScene()
             new_vel[item] = real4{ 0, 0, 0, 0 };
         });
     });
+
+    //{
+    //    auto new_vel = velBuffs[DoubleBuffer::Back].get_access<cl::sycl::access::mode::read>();
+    //
+    //    std::stringstream ss; ss << new_vel[0].x() << std::endl;
+    //
+    //    qDebug(ss.str().c_str());
+    //}
 
     CLcommandqueues().at(dev_id).enqueueReleaseGLObjects(&interop_resources, nullptr, &release);
 
