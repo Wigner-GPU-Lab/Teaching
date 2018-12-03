@@ -101,7 +101,7 @@ int main()
 
 		matmul_kernel(deviceQueue, size, blocksize, A, B, D);
 	}
-	catch (cl::sycl::exception e){ std::cout << "Exception encountered in SYCL: " << e.what() << "\n"; return -1; }
+	catch (cl::sycl::exception e){ std::cout << "Exception encountered in SYCL: " << e.what() << "\n"; return -1; }
 
 	auto checker = [&](std::vector<double> const& u, std::vector<double> const& v)
 	{
