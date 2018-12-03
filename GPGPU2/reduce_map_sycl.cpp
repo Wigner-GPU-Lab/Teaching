@@ -7,7 +7,7 @@
 #include <vector>
 
 template<typename Fr, typename Fm, typename T, typename R = std::result_of_t<Fm(T)>>
-R reduce_map(Fr fr, Fm fm, std::vector<T> const& inp)
+R reduce_map(cl::sycl::queue queue, Fr fr, Fm fm, std::vector<T> const& inp)
 {
 	//block size, assumes input > local_count
 	size_t local_count = 16;
@@ -16,8 +16,6 @@ R reduce_map(Fr fr, Fm fm, std::vector<T> const& inp)
 	std::vector<R> res( (size_t)std::ceil(n/2.0/local_count) );
 
 	{
-		cl::sycl::queue queue{ cl::sycl::gpu_selector() };
-
 		cl::sycl::buffer<T, 1> b_src(inp.data(), n);
 		cl::sycl::buffer<R, 1> b_dst(res.data(), res.size()); 
 
@@ -27,16 +25,15 @@ R reduce_map(Fr fr, Fm fm, std::vector<T> const& inp)
 		{
 			auto src = b_src.template get_access<cl::sycl::access::mode::read>(cgh);
 
-			cl::sycl::accessor<R, 1, cl::sycl::access::mode::read_write,
-				cl::sycl::access::target::local> tmp(cl::sycl::range<1>(local_count), cgh);
+			cl::sycl::accessor<R, 1, cl::sycl::access::mode::read_write, cl::sycl::access::target::local> tmp(cl::sycl::range<1>(local_count), cgh);
 
-			auto dst  = b_dst.template get_access<cl::sycl::access::mode::write>(cgh);
+			auto dst  = b_dst.template get_access<cl::sycl::access::mode::discard_write>(cgh);
 
 			cgh.parallel_for<class ReduceMap>(r, [=](cl::sycl::nd_item<1> id)
 			{
-				auto g = id.get_group().get(0);
+				auto g = id.get_group().get_id();
 				auto bs = id.get_local_range().get(0);
-				auto l = id.get_local().get(0);
+				auto l = id.get_local_id().get(0);
 
 				auto i = g * bs * 2 + l;
 
@@ -60,6 +57,8 @@ R reduce_map(Fr fr, Fm fm, std::vector<T> const& inp)
 		});
 	}
 
+	queue.wait();
+
 	if(res.size() == 1){ return res[0]; }
 	else{ return std::accumulate( res.cbegin()+1, res.cend(), res[0], fr ); }
 
@@ -70,8 +69,8 @@ int main()
 	using T = int;
 
 	// Size of vector
-	size_t n = 1024;
-	
+	size_t n = 4096;
+
 	// Host vector
 	std::vector<T> v(n);
 
@@ -83,10 +82,19 @@ int main()
 
 	auto sum = [](auto const& x, auto const& y){ return x + y; };
 	auto rec_sq = [](auto const& x){ return 1.0 / (1.0 * x*x); };
-	
-	auto res = reduce_map(sum, rec_sq, v);
 
-	//std::cout << "result = " << res << "\n";
-	printf("result = %16.16f\n", res);
+	try
+	{
+		cl::sycl::queue queue{ cl::sycl::gpu_selector() };
+		std::cout << "Selected platform: " << queue.get_context().get_platform().get_info<cl::sycl::info::platform::name>() << "\n";
+		std::cout << "Selected device:   " << queue.get_device().get_info<cl::sycl::info::device::name>() << "\n";
+
+		auto res = reduce_map(queue, sum, rec_sq, v);
+
+		std::cout.precision(16);
+		std::cout << "result = " << res << "\n";
+	}
+	catch (cl::sycl::exception e){ std::cout << "Exception encountered in SYCL: " << e.what() << "\n"; return -1; }
+
 	return 0;
 }
