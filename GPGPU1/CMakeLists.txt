@@ -79,7 +79,7 @@ option (BUILD_CPP "Build C++ samples" ON)
   endif (BUILD_OPENCL)
 
   if (BUILD_SYCL)
-    #add_subdirectory (SYCL)
+    add_subdirectory (SYCL)
   endif (BUILD_SYCL)
 
   if (BUILD_OPENGL)

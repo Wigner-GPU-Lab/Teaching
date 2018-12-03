@@ -29,16 +29,15 @@ source_group ("Sources" FILES ${Files_SRCS})
 add_executable (${PROJECT_NAME} ${Files_BUILD})
 
 # Append our project's include directory to the "#include <>" paths as well as dependencies
-target_include_directories (${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/include
-                                                   ${COMPUTECPP_INCLUDE_DIRECTORY})
-#target_include_directories (${PROJECT_NAME} PUBLIC ${OpenCL_INCLUDE_DIRS})
+target_include_directories (${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 # Specify required language standard
-set_target_properties (${PROJECT_NAME} PROPERTIES CXX_STANDARD 11
+set_target_properties (${PROJECT_NAME} PROPERTIES CXX_STANDARD 14
                                                   CXX_STANDARD_REQUIRED ON)
 
 # Invoke the ComputeCpp compiler and append output to the list of object files for linkage
-add_sycl_to_target (${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR} ${Files_SRCS})
+add_sycl_to_target(TARGET ${PROJECT_NAME}
+                   SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/source/SYCL-MatrixMul.cpp)
 
 ##########################################################
 
