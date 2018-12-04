@@ -26,7 +26,7 @@ auto maybe(bool pred, F f){ using R = decltype(f()); return pred ? Maybe<R>(Just
 //Minimal Pair implementation
 template<typename L, typename R> struct Pair
 {
-    L l; R r;
+	L l; R r;
 };
 
 template<typename L, typename R>
@@ -35,40 +35,42 @@ auto makePair(L const& l, R const& r){ return Pair<L, R>{ l, r }; }
 template<typename UF, typename FF, typename S, typename Z>
 auto hylo( UF uf, FF ff, S seed, Z const& zero )
 {
-    auto maybe_val_and_seed = uf( seed );
-    Z acc = zero;
-    while( maybe_val_and_seed )
-    {
-        acc = ff( acc, maybe_val_and_seed.value.l );
-        maybe_val_and_seed = uf( maybe_val_and_seed.value.r );
-    }
-    return acc;
+	auto maybe_val_and_seed = uf( seed );
+	Z acc = zero;
+	while( maybe_val_and_seed )
+	{
+		acc = ff( acc, maybe_val_and_seed.value.l );
+		maybe_val_and_seed = uf( maybe_val_and_seed.value.r );
+	}
+	return acc;
 }
 
 template<typename F, typename dF, typename S, typename T>
 auto NewtonIterator( F f, dF df, S const& start, T const& tolerance, int nmaxit )
 {
-    return hylo(    [=](Pair<T, int> const& xn_n)
-                    {
-                        auto xnn = xn_n.l - f(xn_n.l)/df(xn_n.l);
-						int n = xn_n.r + 1;
-						return maybe(cl::sycl::fabs(xnn-xn_n.l)*2 > tolerance && n < nmaxit,
-							[=]{ return makePair(makePair(xnn, n), makePair(xnn, n)); });
-                    },
-                    [](auto xn, auto xnn){ return xnn; },
-                    start, makePair(0.0, 0) );
+	return hylo(    [=](Pair<T, int> const& xn_n)
+	{
+		auto xnn = xn_n.l - f(xn_n.l)/df(xn_n.l);
+		int n = xn_n.r + 1;
+#ifdef __SYCL_DEVICE_ONLY__
+		return maybe(cl::sycl::fabs(xnn-xn_n.l)*2 > tolerance && n < nmaxit,
+			[=]{ return makePair(makePair(xnn, n), makePair(xnn, n)); });
+#else
+		return maybe(true, [=]{ return makePair(makePair(xnn, n), makePair(xnn, n)); });
+#endif
+	},
+		[](auto xn, auto xnn){ return xnn; },
+		start, makePair(0.0, 0) );
 }
 
 template<typename F, typename DF, typename T>
-auto roots(F f, DF df, T x00, T x10, size_t n, T tol)
+auto roots(cl::sycl::queue queue, F f, DF df, T x00, T x10, size_t n, T tol)
 {
 	auto x0 = std::min(x00, x10);
 	auto x1 = std::max(x00, x10);
 	std::vector<T> res0( n );
 	auto dx = (x1 - x0) / (n-1.0);
 	{
-		cl::sycl::queue queue{ cl::sycl::gpu_selector() };
-
 		cl::sycl::buffer<T, 1> b_dst(res0.data(), res0.size()); 
 
 		cl::sycl::range<1> r(n);
@@ -79,15 +81,15 @@ auto roots(F f, DF df, T x00, T x10, size_t n, T tol)
 
 			cgh.parallel_for<class Newton>(r, [=](cl::sycl::item<1> id)
 			{
-				auto i = id.get(0);
+				auto i = id.get_id(0);
 				auto xlo = x0 + i * dx;
 				auto xhi = xlo + dx;
 
 				/*do
 				{
-					auto x2 = x = x - f(x) / df(x);
-					if( cl::sycl::fabs(x-x2)/2 < tol ){ x = x2; break; }
-					++n;
+				auto x2 = x = x - f(x) / df(x);
+				if( cl::sycl::fabs(x-x2)/2 < tol ){ x = x2; break; }
+				++n;
 				}while(n<20000);*/
 
 				auto res = NewtonIterator(f, df, makePair((xhi + xlo)/2.0, 0), tol, 20000);
@@ -104,6 +106,7 @@ auto roots(F f, DF df, T x00, T x10, size_t n, T tol)
 				}
 			});
 		});
+		queue.wait();
 	}
 
 	//filter roots:
@@ -133,7 +136,7 @@ int main()
 {
 	std::cout << std::setprecision(16);
 	{
-		//Calculate square root os 612:
+		//Calculate square root of 612 on the CPU:
 		auto f = [](double x){ return x*x - 612.; };
 		auto df = [](double x){ return 2. * x; };
 
@@ -141,37 +144,57 @@ int main()
 
 		//Newton iteration with tracing:
 		auto res = hylo([=](auto const& xn_n)
-						 {
-							auto xnn = xn_n.l - f(xn_n.l)/df(xn_n.l);
-							int n = xn_n.r + 1;
-							return maybe(cl::sycl::fabs(xnn-xn_n.l)*2 > 1e-14 && n < 5000,
-								         [=]{ return makePair(makePair(xnn, n), makePair(xnn, n)); });
-						 },
-						 [](auto xn, auto xnn){ std::cout << xnn.r << "   " << xn.l << " -> " << xnn.l << "\n"; return xnn; }, makePair(x0, 0), makePair(x0, 0) );
+		{
+			auto xnn = xn_n.l - f(xn_n.l)/df(xn_n.l);
+			int n = xn_n.r + 1;
+
+			return maybe(fabs(xnn-xn_n.l)*2 > 1e-14 && n < 5000,
+						 [=]{ return makePair(makePair(xnn, n), makePair(xnn, n)); });
+
+		},
+		[](auto xn, auto xnn){ std::cout << xnn.r << "   " << xn.l << " -> " << xnn.l << "\n"; return xnn; }, makePair(x0, 0), makePair(x0, 0) );
+		
 		std::cout << "Result = " << res.l << "\n"
-			      << "Exact  = " << sqrt(612.) << "\n";
+			      << "Exact  = " << sqrt(612.) << "\n\n";
 	}
 
 	//12th Hermite polinomial:
 	auto f = [](auto const& x)
 	{
 		auto sqx = x*x;
+#ifdef __SYCL_DEVICE_ONLY__
 		return cl::sycl::exp(-sqx/2) * ((((((4096* sqx - 135168)*sqx + 1520640)*sqx - 7096320)*sqx + 13305600)*sqx - 7983360)*sqx + 665280);
+#else
+		return 1.0;
+#endif
 	};
 
 	auto df = [](auto const& x)
 	{
 		auto sqx = x*x;
+#ifdef __SYCL_DEVICE_ONLY__
 		return -x*64*cl::sycl::exp(-sqx/2)*((((((64*sqx - 2880)*sqx + 44880)*sqx - 300960)*sqx + 873180)*sqx - 956340)*sqx + 259875);
+#else
+		return 1.0;
+#endif
 	};
 
-	auto res = roots(f, df, -5.0, 5.0, 2048, 1e-9);
-
-	//Compare: http://www.wolframalpha.com/input/?i=12th+Hermite+polynomial+*+exp(-x*x%2F2)
-	std::cout << "Roots of the 12th Hermite polinomial:\n";
-	for(int i=0; i<(int)res.size(); ++i)
+	try
 	{
-		std::cout << i << " = " << res[i] << "\n";
+		cl::sycl::queue queue{ cl::sycl::gpu_selector() };
+		std::cout << "Selected platform: " << queue.get_context().get_platform().get_info<cl::sycl::info::platform::name>() << "\n";
+		std::cout << "Selected device:   " << queue.get_device().get_info<cl::sycl::info::device::name>() << "\n";
+
+		auto res = roots(queue, f, df, -5.0, 5.0, 2048, 1e-9);
+
+		//Compare: http://www.wolframalpha.com/input/?i=12th+Hermite+polynomial+*+exp(-x*x%2F2)
+		std::cout << "Roots of the 12th Hermite polinomial:\n";
+		for(int i=0; i<(int)res.size(); ++i)
+		{
+			std::cout << i << " = " << res[i] << "\n";
+		}
 	}
+	catch (cl::sycl::exception e){ std::cout << "Exception encountered in SYCL: " << e.what() << "\n"; return -1; }
+
 	return 0;
 }
