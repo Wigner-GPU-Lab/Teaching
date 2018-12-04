@@ -172,7 +172,7 @@ void method4(Rav2<T> M, Rav2<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<2> id, 
 		id.barrier(cl::sycl::access::fence_space::local_space);
 		auto baseV = (B*bs*hb + ly*rbs)/2;
 		auto baseVt = ly*rbs;///2*rat;
-		//auto pbaseVt = t.get_pointer() + (long long)(ly*rbs);
+							 //auto pbaseVt = t.get_pointer() + (long long)(ly*rbs);
 		auto baseM = baseM0 + baseV;
 		for(int k=0; k<hb*rat/2/*rbs/2*/; ++k)
 		{
@@ -381,10 +381,6 @@ bool is_same( std::vector<T> const& u, std::vector<T> const& v )
 
 int main()
 {
-	cl::sycl::queue queue{ cl::sycl::gpu_selector() };
-	std::cout << "Selected platform: " << queue.get_context().get_platform().get_info<cl::sycl::info::platform::name>() << "\n";
-	std::cout << "Selected device:   " << queue.get_device().get_info<cl::sycl::info::device::name>() << "\n";
-
 	using T = double;
 	using R = std::pair<std::vector<T>, double>;
 
@@ -405,17 +401,21 @@ int main()
 	{
 		for(size_t j = 0; j < n; j++ )
 		{
-			M[i*n+j] = distr(gen);//(i+j+1) / (1.*n);
+			M[i*n+j] = distr(gen);
 		}
 	}
 
 	for(size_t i = 0; i < n; i++ )
 	{
-		V[i] = distr(gen);//1/(i*i+1.) / (1.*n);
+		V[i] = distr(gen);
 	}
 
 	try
 	{
+		cl::sycl::queue queue{ cl::sycl::gpu_selector() };
+		std::cout << "Selected platform: " << queue.get_context().get_platform().get_info<cl::sycl::info::platform::name>() << "\n";
+		std::cout << "Selected device:   " << queue.get_device().get_info<cl::sycl::info::device::name>() << "\n";
+
 		auto ref = matvctmul_naive(queue, M, V);
 
 		auto summary = [&]( std::string const& title, std::vector<R> const& v )
@@ -439,23 +439,23 @@ int main()
 		summary("Version 2", {matvctmul<1>(queue, M, V, 1), matvctmul<1>(queue, M, V, 1)});
 
 		summary("Version 3 (2)", {matvctmul_adv(queue, M, V, 2,  2),
-		matvctmul_adv(queue, M, V, 4,  2),
-		matvctmul_adv(queue, M, V, 8,  2),
-		matvctmul_adv(queue, M, V, 16, 2),
-		matvctmul_adv(queue, M, V, 32, 2)});
+			matvctmul_adv(queue, M, V, 4,  2),
+			matvctmul_adv(queue, M, V, 8,  2),
+			matvctmul_adv(queue, M, V, 16, 2),
+			matvctmul_adv(queue, M, V, 32, 2)});
 		summary("Version 3 (4)", {matvctmul_adv(queue, M, V, 4,  4),
-		matvctmul_adv(queue, M, V, 8,  4),
-		matvctmul_adv(queue, M, V, 16, 4),
-		matvctmul_adv(queue, M, V, 32, 4)});
+			matvctmul_adv(queue, M, V, 8,  4),
+			matvctmul_adv(queue, M, V, 16, 4),
+			matvctmul_adv(queue, M, V, 32, 4)});
 
 		summary("Version 3 (8)", {matvctmul_adv(queue, M, V, 8,  8),
 			matvctmul_adv(queue, M, V, 16, 8),
 			matvctmul_adv(queue, M, V, 32, 8)});
 
 		summary("Version 3 (16)", {matvctmul_adv(queue, M, V, 16, 16),
-		matvctmul_adv(queue, M, V, 16, 16)});
+			matvctmul_adv(queue, M, V, 16, 16)});
 		summary("Version 4", {matvctmul_adv_v(queue, M, V, 8,  4),
-		matvctmul_adv_v(queue, M, V, 16, 8)});
+			matvctmul_adv_v(queue, M, V, 16, 8)});
 	}
 	catch (cl::sycl::exception e){ std::cout << "Exception encountered in SYCL: " << e.what() << "\n"; return -1; }
 
@@ -463,7 +463,7 @@ int main()
 	auto U2 = matvctmul<0>(queue, M, V, 64).first;
 	for(size_t i=0; i<U1.size(); i++)
 	{
-		std::cout << "result[" << i << "] = " << U1[i] << "    " << U2[i]<< "\n";
+	std::cout << "result[" << i << "] = " << U1[i] << "    " << U2[i]<< "\n";
 	}*/
 
 	return 0;
