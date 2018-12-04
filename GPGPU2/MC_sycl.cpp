@@ -56,9 +56,9 @@ auto MCI(cl::sycl::queue& queue, size_t nth, size_t N, Fi f, Fm mask, T x0, T x1
 			t0 = std::chrono::high_resolution_clock::now();
 			cgh.parallel_for<class MCIKernel>(r, [=](cl::sycl::nd_item<1> id)
 			{
-				auto g = id.get_group().get(0);
+				auto g = id.get_group().get_id(0);
 				auto bs = id.get_local_range().get(0);
-				auto l = id.get_local().get(0);
+				auto l = id.get_local_id().get(0);
 
 				long q0 = (long)(15348919 ^ (7+g));
 				long state = (long)(2147483647 * uniform_rnd(q0));
@@ -111,16 +111,24 @@ auto MCI(cl::sycl::queue& queue, size_t nth, size_t N, Fi f, Fm mask, T x0, T x1
 
 int main()
 {
-	cl::sycl::queue queue{ cl::sycl::amd_selector() };
-	std::ofstream file("MCscaling.txt");
-	for(size_t n=1; n<16; ++n)
+	try
 	{
-		auto res = MCI(queue, 256*n, (size_t)1 << (size_t)30, [](auto x, auto y){ return 1.0; }, [](auto x, auto y){ return sq(x)+sq(y) <= 1.0; }, -1.0, 1.0, -1.0, 1.0);
-		//printf("GPU result = %16.16f\n", res.first);
-		//printf("ref result = %16.16f\n", pi);
-		printf("result ratio = %16.16f\n", res.first / pi);
-		printf("[%zi] time = %f ms\n", n, res.second/1000./1000.);
-		file << n << "   " << res.second/1000./1000. << "   " << abs(1.0 - res.first / pi) << "\n";
+		cl::sycl::queue queue{ cl::sycl::gpu_selector() };
+		std::cout << "Selected platform: " << queue.get_context().get_platform().get_info<cl::sycl::info::platform::name>() << "\n";
+		std::cout << "Selected device:   " << queue.get_device().get_info<cl::sycl::info::device::name>() << "\n";
+
+		std::ofstream file("MCscaling.txt");
+		for(size_t n=1; n<16; ++n)
+		{
+			auto res = MCI(queue, 256*n, (size_t)1 << (size_t)30, [](auto x, auto y){ return 1.0; }, [](auto x, auto y){ return sq(x)+sq(y) <= 1.0; }, -1.0, 1.0, -1.0, 1.0);
+			//printf("GPU result = %16.16f\n", res.first);
+			//printf("ref result = %16.16f\n", pi);
+			printf("result ratio = %16.16f\n", res.first / pi);
+			printf("[%zi] time = %f ms\n", n, res.second/1000./1000.);
+			file << n << "   " << res.second/1000./1000. << "   " << abs(1.0 - res.first / pi) << "\n";
+		}
 	}
+	catch (cl::sycl::exception e){ std::cout << "Exception encountered in SYCL: " << e.what() << "\n"; return -1; }
+
 	return 0;
 }
