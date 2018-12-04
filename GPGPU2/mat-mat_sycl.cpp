@@ -1,11 +1,11 @@
 // SYCL include
 #include <CL/sycl.hpp>
-#include <random>
 
 // Standard C++ includes
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <random>
 #include <fstream>
 
 template<int i> struct Int{};
@@ -21,8 +21,8 @@ template<typename T> using RWla = cl::sycl::accessor<T, 2, cl::sycl::access::mod
 template<typename T>
 void method_0(Ra<T> A, Ra<T> B, Wa<T> C, cl::sycl::item<2> id, size_t n)
 {
-	auto ix = id.get(0);
-	auto iy = id.get(1);
+	auto ix = id.get_id(0);
+	auto iy = id.get_id(1);
 
 	auto tmp = (T)0;
 	for(size_t k=0; k<n; ++k)
@@ -36,10 +36,10 @@ void method_0(Ra<T> A, Ra<T> B, Wa<T> C, cl::sycl::item<2> id, size_t n)
 template<int ls, typename T>
 void method_1(Ra<T> A, Ra<T> B, Wa<T> C, RWla<T> tA, RWla<T> tB, cl::sycl::nd_item<2> id, size_t n)
 {
-	auto ix = id.get_global().get(0);
-	auto iy = id.get_global().get(1);
-	auto lx = id.get_local().get(0);
-	auto ly = id.get_local().get(1);
+	auto ix = id.get_global_id().get(0);
+	auto iy = id.get_global_id().get(1);
+	auto lx = id.get_local_id().get(0);
+	auto ly = id.get_local_id().get(1);
 
 	auto sum = (T)0;
 	auto blim = (int)n/ls;
@@ -69,10 +69,10 @@ template<typename T> using vRWla = cl::sycl::accessor<cl::sycl::vec<T, 2>, 2, cl
 template<int ls, int vs, typename T>
 void method_2(vRa<T> A, vRa<T> B, vWa<T> C, vRWla<T> tA, vRWla<T> tB, cl::sycl::nd_item<2> id, size_t n)
 {
-	auto ix = id.get_global().get(0);
-	auto iy = id.get_global().get(1);
-	auto lx = id.get_local().get(0);
-	auto ly = id.get_local().get(1);
+	auto ix = id.get_global_id().get(0);
+	auto iy = id.get_global_id().get(1);
+	auto lx = id.get_local_id().get(0);
+	auto ly = id.get_local_id().get(1);
 
 	cl::sycl::vec<T, 2> sum1 = {(T)0, (T)0};
 	cl::sycl::vec<T, 2> sum2 = {(T)0, (T)0};
@@ -288,68 +288,66 @@ auto cpu_blocked(std::vector<T> const& A, std::vector<T> const& B)
 	return std::make_pair(C, ms(t0, t1));;
 }
 
-double uniform_rnd(long& state)
-{
-	const long A = 48271;      /* multiplier*/
-	const long M = 2147483647; /* modulus */
-	const long Q = M / A;      /* quotient */
-	const long R = M % A;      /* remainder */
-	long t = A * (state % Q) - R * (state / Q);
-	if (t > 0){ state = t;     }
-	else      { state = t + M; }
-	return ((double) state / M);
-}
-
 int main()
 {
-	cl::sycl::queue queue{ cl::sycl::amd_selector() };
-
 	using T = double;
 	using R = std::pair<std::vector<T>, double>;
 
-	// Size of vectors
-	size_t n = 64;
-	std::ofstream file("matmul.txt");
-	for(; n <= 1024*4; n *= 2)
+	// Random generators
+	std::mt19937 gen{std::random_device()()};
+	std::uniform_real_distribution<T> distr(-1.0f, 1.0f);
+
+	try
 	{
-		std::cout << "\nn = " << n << "\n\n";
-		// Host vectors
-		std::vector<T> A(n*n);
-		std::vector<T> B(n*n);
+		cl::sycl::queue queue{ cl::sycl::gpu_selector() };
+		std::cout << "Selected platform: " << queue.get_context().get_platform().get_info<cl::sycl::info::platform::name>() << "\n";
+		std::cout << "Selected device:   " << queue.get_device().get_info<cl::sycl::info::device::name>() << "\n";
 
-		long state = std::random_device()();
-
-		// Initialize vectors on host
-		for(size_t i = 0; i < n; i++ )
+		// Size of vectors
+		size_t n = 64;
+		std::ofstream file("matmul.txt");
+		for(; n <= 1024*4; n *= 2)
 		{
-			for(size_t j = 0; j < n; j++ )
+			std::cout << "\nn = " << n << "\n\n";
+			// Host vectors
+			std::vector<T> A(n*n);
+			std::vector<T> B(n*n);
+
+			long state = std::random_device()();
+
+			// Initialize vectors on host
+			for(size_t i = 0; i < n; i++ )
 			{
-				A[i*n+j] = (T)((i+j+1) / (1.*n*n));//(T)uniform_rnd(state);//(i+j+1) / (1.*n*n);
-				B[i*n+j] = (T)((i-j+2) / (1.*n*n));//(T)uniform_rnd(state);//(i-j+2) / (1.*n*n);
+				for(size_t j = 0; j < n; j++ )
+				{
+					A[i*n+j] = distr(gen);
+					B[i*n+j] = distr(gen);
+				}
 			}
+
+			auto ref = cpu_naive(A, B);
+
+			auto summary = [&]( std::string const& title, std::vector<R> const& v )
+			{
+				std::cout << title << ": ";
+				for(auto const& r : v){ std::cout << r.second << " ms (" << (is_same(r.first, ref.first) ? '+' : '-') << ") "; }
+				std::cout << "\n";
+
+				file << "   " << v[1].second;
+			};
+
+			file << n << "   " << ref.second;
+			summary("CPU Blocked 4",  {ref, cpu_blocked<4>(A, B)});
+			summary("CPU Blocked 8",  {ref, cpu_blocked<8>(A, B)});
+			summary("CPU Blocked 16", {ref, cpu_blocked<16>(A, B)});
+			summary("CPU Blocked 32", {ref, cpu_blocked<32>(A, B)});
+			summary("GPU Naive",  {ref, matmatmul_naive(queue, A, B)});
+			summary("GPU Shared", {ref, matmatmul_shared<16>(queue, A, B)});
+			summary("GPU Vectorized", {ref, matmatmul_vectorized<16, 2>(queue, A, B)});
+			file << "\n";
 		}
-
-		auto ref = cpu_naive(A, B);
-
-		auto summary = [&]( std::string const& title, std::vector<R> const& v )
-		{
-			std::cout << title << ": ";
-			for(auto const& r : v){ std::cout << r.second << " ms (" << (is_same(r.first, ref.first) ? '+' : '-') << ") "; }
-			std::cout << "\n";
-
-			file << "   " << v[1].second;
-		};
-
-		file << n << "   " << ref.second;
-		summary("CPU Blocked 4",  {ref, cpu_blocked<4>(A, B)});
-		summary("CPU Blocked 8",  {ref, cpu_blocked<8>(A, B)});
-		summary("CPU Blocked 16", {ref, cpu_blocked<16>(A, B)});
-		summary("CPU Blocked 32", {ref, cpu_blocked<32>(A, B)});
-		summary("GPU Naive",  {ref, matmatmul_naive(queue, A, B)});
-		summary("GPU Shared", {ref, matmatmul_shared<16>(queue, A, B)});
-		summary("GPU Vectorized", {ref, matmatmul_vectorized<16, 2>(queue, A, B)});
-		file << "\n";
 	}
+	catch (cl::sycl::exception e){ std::cout << "Exception encountered in SYCL: " << e.what() << "\n"; return -1; }
 
 	return 0;
 }
