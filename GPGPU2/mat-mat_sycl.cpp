@@ -221,8 +221,8 @@ bool is_same( std::vector<T> const& u, std::vector<T> const& v )
 	auto err = (T)0;
 	for(; i<u.size(); ++i)
 	{
-		err = abs( (u[i] - v[i]) / (u[i]+v[i]));
-		if( err > 5e-6 )
+		err = abs( (u[i] - v[i]) );
+		if( err > 5e-13 )
 		{
 			std::cout << "mismatch " << i << "  " << err << "\n";
 			return false;
