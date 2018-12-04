@@ -1,31 +1,11 @@
 // SYCL include
 #include <CL/sycl.hpp>
 
-#define COMPUTECPP_ABACUS_DETAIL_VECTOR_TWO_ARGS(category, func, x, y) \
-  {                                                                    \
-    return abacus::detail::category::func<                             \
-        typename abacus::convert_abacus_sycl<                          \
-            cl::sycl::vec<T, width>>::abacus_type>(                    \
-        *(reinterpret_cast<typename abacus::convert_abacus_sycl<       \
-              cl::sycl::vec<T, width>>::abacus_type *>(&x)),           \
-        *(reinterpret_cast<typename abacus::convert_abacus_sycl<       \
-              cl::sycl::vec<T, width>>::abacus_type *>(&y)));          \
-  }
-
-namespace cl {
-	namespace sycl {
-
-		template <typename T, int width = 2>
-			T dot(cl::sycl::vec<T, 2> x, cl::sycl::vec<T, 2> y) {
-			COMPUTECPP_ABACUS_DETAIL_VECTOR_TWO_ARGS(geometric, dot, x, y)
-		}
-	}
-}
-
 // Standard C++ includes
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <random>
 
 template<int i> struct Int{};
 
@@ -40,7 +20,7 @@ template<typename T> using RWla = cl::sycl::accessor<T, 1, cl::sycl::access::mod
 template<typename T>
 void method_0(Ra<T> M, Ra<T> V, Wa<T> U, cl::sycl::item<1> id, size_t n)
 {
-	auto i = id.get(0);
+	auto i = id.get_id(0);
 
 	auto tmp = (T)0;
 	for(size_t k=0; k<n; ++k)
@@ -54,9 +34,9 @@ void method_0(Ra<T> M, Ra<T> V, Wa<T> U, cl::sycl::item<1> id, size_t n)
 template<typename T>
 void method(Int<0>, Ra<T> M, Ra<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<1> id, size_t n, size_t bs)
 {
-	auto i = id.get_global().get(0);
-	auto b = id.get_group().get(0);
-	auto l = id.get_local().get(0);
+	auto i = id.get_global_id().get(0);
+	auto b = id.get_group().get_id(0);
+	auto l = id.get_local_id().get(0);
 
 	auto sum = (T)0;
 	auto Blim = (int)n/bs;
@@ -69,6 +49,7 @@ void method(Int<0>, Ra<T> M, Ra<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<1> i
 		{
 			sum += M[i*n+B*bs+k] * t[k];
 		}
+		id.barrier(cl::sycl::access::fence_space::local_space);
 	}
 	U[i] = sum;
 }
@@ -77,9 +58,9 @@ void method(Int<0>, Ra<T> M, Ra<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<1> i
 template<typename T>
 void method(Int<1>, Ra<T> M, Ra<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<1> id, size_t n, size_t bs)
 {
-	auto i = id.get_global().get(0);
-	auto b = id.get_group().get(0);
-	auto l = id.get_local().get(0);
+	auto i = id.get_global_id().get(0);
+	auto b = id.get_group().get_id(0);
+	auto l = id.get_local_id().get(0);
 
 	static const size_t N = 8;
 
@@ -117,10 +98,10 @@ void method(Int<1>, Ra<T> M, Ra<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<1> i
 template<typename T>
 void method3(Ra<T> M, Ra<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<2> id, size_t n, size_t bs, size_t hs)
 {
-	auto i = id.get_global().get(0);
-	auto b = id.get_group().get(0);
-	auto lx = id.get_local().get(0);
-	auto ly = id.get_local().get(1);
+	auto i = id.get_global_id().get(0);
+	auto b = id.get_group().get_id(0);
+	auto lx = id.get_local_id().get(0);
+	auto ly = id.get_local_id().get(1);
 
 	auto rbs = bs/hs;
 
@@ -128,7 +109,7 @@ void method3(Ra<T> M, Ra<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<2> id, size
 	auto Blim = (int)n/bs;
 	for(int B = 0; B<Blim; ++B)
 	{
-		if(id.get_local().get(1) == 0)
+		if(ly == 0)
 		{
 			t[lx] = V[B*bs+lx];
 		}
@@ -143,8 +124,8 @@ void method3(Ra<T> M, Ra<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<2> id, size
 	//id.barrier(cl::sycl::access::fence_space::local_space);
 	t[lx*hs+ly] = sum;
 	id.barrier(cl::sycl::access::fence_space::local_space);
-	
-	if(id.get_local().get(1) == 0)
+
+	if(ly == 0)
 	{
 		sum = (T)0;
 		for(int H = 0; H<(int)hs; ++H)
@@ -164,19 +145,19 @@ void method4(Rav2<T> M, Rav2<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<2> id, 
 {
 	using V2 = cl::sycl::vec<T, 2>;
 
-	auto i = id.get_global().get(0);
-	auto b = id.get_group().get(0);
-	auto lx = id.get_local().get(0);
-	auto ly = id.get_local().get(1);
+	auto i = id.get_global_id().get(0);
+	auto b = id.get_group().get_id(0);
+	auto lx = id.get_local_id().get(0);
+	auto ly = id.get_local_id().get(1);
 
 	static const auto rat = 2;//bs/hs;
 	static const auto hb = 8;
 	static const auto rbs = hb*rat;
 	size_t off = 0;
 	T sum = (T)0;//, (T)0, (T)0};
-	//auto sum2 = (T)0;
-	/*auto sum3 = (T)0;
-	auto sum4 = (T)0;*/
+				 //auto sum2 = (T)0;
+				 /*auto sum3 = (T)0;
+				 auto sum4 = (T)0;*/
 	auto Blim = (int)n/bs/hb;
 	auto baseM0 = i*n/2;
 	for(int B = 0; B<Blim; ++B)
@@ -191,7 +172,7 @@ void method4(Rav2<T> M, Rav2<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<2> id, 
 		id.barrier(cl::sycl::access::fence_space::local_space);
 		auto baseV = (B*bs*hb + ly*rbs)/2;
 		auto baseVt = ly*rbs;///2*rat;
-		auto pbaseVt = t.get_pointer() + (long long)(ly*rbs);
+		//auto pbaseVt = t.get_pointer() + (long long)(ly*rbs);
 		auto baseM = baseM0 + baseV;
 		for(int k=0; k<hb*rat/2/*rbs/2*/; ++k)
 		{
@@ -202,8 +183,8 @@ void method4(Rav2<T> M, Rav2<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<2> id, 
 			//off = 2*i*n+B*bs+hs*(2*k)+ly;
 
 			//V2 f = V2{ t[baseVt+(2*k+0)], t[baseVt+(2*k+1)] };
-			V2 f = *(V2*)pbaseVt;
-			//V2 f = V[baseV+k];
+			//V2 f = *(V2*)pbaseVt;
+			V2 f = V[baseV+k];
 			//off = (i*n+base+k;//(2*k+0);
 
 			//sum[0] += cl::sycl::dot(V2{ M[0*n+off+0], M[0*n+off+1] }, f);
@@ -212,7 +193,7 @@ void method4(Rav2<T> M, Rav2<T> V, Wa<T> U, RWla<T> t, cl::sycl::nd_item<2> id, 
 
 			sum += cl::sycl::dot( M[baseM + k], f );
 
-			pbaseVt += 2;
+			//pbaseVt += 2;
 		}
 		id.barrier(cl::sycl::access::fence_space::local_space);
 	}
@@ -311,7 +292,7 @@ auto matvctmul_adv(cl::sycl::queue& queue, std::vector<T> const& m, std::vector<
 {
 	auto n = v.size();
 	size_t local_mem_count = local_count * hs;
-	
+
 	std::vector<T> res(n);
 
 	Time t0, t1;
@@ -389,8 +370,8 @@ bool is_same( std::vector<T> const& u, std::vector<T> const& v )
 	auto err = (T)0;
 	for(; i<u.size(); ++i)
 	{
-		err = abs( (u[i] - v[i]) / (u[i]+v[i]));
-		if( err > 5e-4 )
+		err = abs( (u[i] - v[i]) );
+		if( err > 1e-10 )
 		{
 			return false;
 		}
@@ -400,17 +381,23 @@ bool is_same( std::vector<T> const& u, std::vector<T> const& v )
 
 int main()
 {
-	cl::sycl::queue queue{ cl::sycl::amd_selector() };
+	cl::sycl::queue queue{ cl::sycl::gpu_selector() };
+	std::cout << "Selected platform: " << queue.get_context().get_platform().get_info<cl::sycl::info::platform::name>() << "\n";
+	std::cout << "Selected device:   " << queue.get_device().get_info<cl::sycl::info::device::name>() << "\n";
 
 	using T = double;
 	using R = std::pair<std::vector<T>, double>;
 
 	// Size of vectors
-	size_t n = 4096*4;
+	size_t n = 8192;
 
 	// Host vectors
 	std::vector<T> M(n*n);
 	std::vector<T> V(n);
+
+	// Random generators
+	std::mt19937 gen{std::random_device()()};
+	std::uniform_real_distribution<T> distr(-1.0f, 1.0f);
 
 	// Initialize vectors on host
 	for( auto& e : M ){ e = 0.0; }
@@ -418,63 +405,66 @@ int main()
 	{
 		for(size_t j = 0; j < n; j++ )
 		{
-			M[i*n+j] = (i+j+1) / (1.*n);
+			M[i*n+j] = distr(gen);//(i+j+1) / (1.*n);
 		}
 	}
 
 	for(size_t i = 0; i < n; i++ )
 	{
-		V[i] = 1/(i*i+1.) / (1.*n);
+		V[i] = distr(gen);//1/(i*i+1.) / (1.*n);
 	}
 
-	auto ref = matvctmul_naive(queue, M, V);
-
-	auto summary = [&]( std::string const& title, std::vector<R> const& v )
+	try
 	{
-		std::cout << title << ": ";
-		for(auto const& r : v){ std::cout << r.second << " ms (" << (is_same(r.first, ref.first) ? '+' : '-') << ") "; }
-		std::cout << "\n";
-	};
+		auto ref = matvctmul_naive(queue, M, V);
 
-	summary("Naive", {ref, matvctmul_naive(queue, M, V)});
+		auto summary = [&]( std::string const& title, std::vector<R> const& v )
+		{
+			std::cout << title << ": ";
+			for(auto const& r : v){ std::cout << r.second << " ms (" << (is_same(r.first, ref.first) ? '+' : '-') << ") "; }
+			std::cout << "\n";
+		};
 
-	summary("Version 1", {matvctmul<0>(queue, M, V, 1),
-		                  matvctmul<0>(queue, M, V, 2),
-		                  matvctmul<0>(queue, M, V, 4),
-		                  matvctmul<0>(queue, M, V, 8),
-		                  matvctmul<0>(queue, M, V, 16),
-		                  matvctmul<0>(queue, M, V, 32),
-		                  matvctmul<0>(queue, M, V, 64)	});
-	
-	
-	/*summary("Version 2", {matvctmul<1>(queue, M, V, 1), matvctmul<1>(queue, M, V, 1)});
-	
-	summary("Version 3 (2)", {matvctmul_adv(queue, M, V, 2,  2),
-		                      matvctmul_adv(queue, M, V, 4,  2),
-		                      matvctmul_adv(queue, M, V, 8,  2),
-		                      matvctmul_adv(queue, M, V, 16, 2),
-		                      matvctmul_adv(queue, M, V, 32, 2)});
+		summary("Naive", {ref, matvctmul_naive(queue, M, V)});
 
-	summary("Version 3 (4)", {matvctmul_adv(queue, M, V, 4,  4),
-		                      matvctmul_adv(queue, M, V, 8,  4),
-		                      matvctmul_adv(queue, M, V, 16, 4),
-		                      matvctmul_adv(queue, M, V, 32, 4)});*/
-
-	summary("Version 3 (8)", {matvctmul_adv(queue, M, V, 8,  8),
-		                      matvctmul_adv(queue, M, V, 16, 8),
-		                      matvctmul_adv(queue, M, V, 32, 8)});
-
-	/*summary("Version 3 (16)", {matvctmul_adv(queue, M, V, 16, 16),
-		                       matvctmul_adv(queue, M, V, 16, 16)});
-
-	summary("Version 4", {matvctmul_adv_v(queue, M, V, 8,  4),
-		                  matvctmul_adv_v(queue, M, V, 16, 8)});*/
+		summary("Version 1", {matvctmul<0>(queue, M, V, 1),
+			matvctmul<0>(queue, M, V, 2),
+			matvctmul<0>(queue, M, V, 4),
+			matvctmul<0>(queue, M, V, 8),
+			matvctmul<0>(queue, M, V, 16),
+			matvctmul<0>(queue, M, V, 32),
+			matvctmul<0>(queue, M, V, 64)	});
 
 
-	//for(size_t i=0; i<U.size(); i++)
-	{
-		//std::cout << "result[" << i << "] = " << U[i] << "\n";
+		summary("Version 2", {matvctmul<1>(queue, M, V, 1), matvctmul<1>(queue, M, V, 1)});
+
+		summary("Version 3 (2)", {matvctmul_adv(queue, M, V, 2,  2),
+		matvctmul_adv(queue, M, V, 4,  2),
+		matvctmul_adv(queue, M, V, 8,  2),
+		matvctmul_adv(queue, M, V, 16, 2),
+		matvctmul_adv(queue, M, V, 32, 2)});
+		summary("Version 3 (4)", {matvctmul_adv(queue, M, V, 4,  4),
+		matvctmul_adv(queue, M, V, 8,  4),
+		matvctmul_adv(queue, M, V, 16, 4),
+		matvctmul_adv(queue, M, V, 32, 4)});
+
+		summary("Version 3 (8)", {matvctmul_adv(queue, M, V, 8,  8),
+			matvctmul_adv(queue, M, V, 16, 8),
+			matvctmul_adv(queue, M, V, 32, 8)});
+
+		summary("Version 3 (16)", {matvctmul_adv(queue, M, V, 16, 16),
+		matvctmul_adv(queue, M, V, 16, 16)});
+		summary("Version 4", {matvctmul_adv_v(queue, M, V, 8,  4),
+		matvctmul_adv_v(queue, M, V, 16, 8)});
 	}
+	catch (cl::sycl::exception e){ std::cout << "Exception encountered in SYCL: " << e.what() << "\n"; return -1; }
+
+	/*auto U1 = matvctmul_naive(queue, M, V).first;
+	auto U2 = matvctmul<0>(queue, M, V, 64).first;
+	for(size_t i=0; i<U1.size(); i++)
+	{
+		std::cout << "result[" << i << "] = " << U1[i] << "    " << U2[i]<< "\n";
+	}*/
 
 	return 0;
 }
