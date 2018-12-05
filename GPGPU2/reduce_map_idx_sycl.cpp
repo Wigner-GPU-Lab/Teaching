@@ -11,6 +11,8 @@ static const double pi = 3.14159265358979323846264338327950288419716939937510582
 template<typename T>
 auto sq(T const& x){ return x*x; }
 
+class ReduceMapIdx;
+
 template<typename Fr, typename Fm, typename R = std::result_of_t<Fm(size_t)>>
 R reduce_map_idx(cl::sycl::queue& queue, Fr fr, Fm fm, size_t n)
 {
@@ -30,16 +32,16 @@ R reduce_map_idx(cl::sycl::queue& queue, Fr fr, Fm fm, size_t n)
 
 			auto dst  = b_dst.template get_access<cl::sycl::access::mode::discard_write>(cgh);
 
-			cgh.parallel_for<class ReduceMapIdx>(r, [=](cl::sycl::nd_item<1> id)
+			cgh.parallel_for<ReduceMapIdx>(r, [=](cl::sycl::nd_item<1> id)
 			{
 				auto g = id.get_group().get_id();
 				auto bs = id.get_local_range().get(0);
 				auto l = id.get_local_id().get(0);
 
-				auto i = 2 * (g * bs + l);
-#ifdef __SYCL_DEVICE_ONLY__
+				auto i = 2 * (g * bs + l).get(0);
+
 				tmp[l] = fr( fm(i), fm(i+1) );
-#endif
+
 				id.barrier(cl::sycl::access::fence_space::local_space);
 
 				// do reduction in shared mem
@@ -67,16 +69,12 @@ auto integrate(cl::sycl::queue queue, F f, double L, size_t n)
 {
 	auto f0 = [=](auto const& i0)
 	{
-#ifdef __SYCL_DEVICE_ONLY__
 		auto i = i0+1;
 		//w_i * f( x_i )
 		auto recnp1 = 1.0 / (n+1);
 		auto w = L*pi * recnp1 / sq( cl::sycl::sin(i*pi * recnp1) );
 		auto x = L / cl::sycl::tan( pi * i  * recnp1);
 		return w * f(x);
-#else
-		return 0.0;
-#endif
 	};
 
 	auto sum = [](auto const& x, auto const& y){ return x + y; };
@@ -90,7 +88,7 @@ int main()
 
 	try
 	{
-		cl::sycl::queue queue{ cl::sycl::gpu_selector() };
+		cl::sycl::queue queue{ cl::sycl::cpu_selector() };
 		std::cout << "Selected platform: " << queue.get_context().get_platform().get_info<cl::sycl::info::platform::name>() << "\n";
 		std::cout << "Selected device:   " << queue.get_device().get_info<cl::sycl::info::device::name>() << "\n";
 
