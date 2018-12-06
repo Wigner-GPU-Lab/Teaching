@@ -20,7 +20,7 @@
 #include <QVector>
 
 // C++ includes
-#include <array>
+#include <array>		// std::array
 #include <fstream>
 #include <memory>
 #include <future>
@@ -28,6 +28,7 @@
 #include <memory>
 #include <sstream>
 #include <algorithm>
+#include <memory>		// std::unique_ptr
 
 using real = cl_float;
 using real4 = cl::sycl::float4;
@@ -74,25 +75,25 @@ private:
 	std::vector<real4> pos_mass;
 	std::vector<real4> velocity;
 
+    // OpenGL related variables
+    std::unique_ptr<QOpenGLShader> vs, fs;
+    std::unique_ptr<QOpenGLShaderProgram> sp;
+    std::array<std::unique_ptr<QOpenGLBuffer>, 2> vbos;
+    std::array<std::unique_ptr<QOpenGLVertexArrayObject>, 2> vaos;
+
 	// OpenCL related variables
+    std::array<cl::BufferGL, 2> CL_posBuffs;
+    std::array<cl::Buffer, 2> CL_velBuffs;
+    std::vector<cl::Memory> interop_resources;  // Bloat
+    bool cl_khr_gl_event_supported;
+
+    // SYCL related variables
     cl::sycl::context context;              // Context
     cl::sycl::device device;                // Device
     cl::sycl::queue compute_queue;          // CommandQueue
-    bool cl_khr_gl_event_supported;
 
-    std::array<cl::BufferGL, 2> CL_posBuffs;
-	std::array<cl::sycl::buffer<real4>, 2> posBuffs;   // Simulation data buffers
-	std::array<cl::sycl::buffer<real4>, 2> velBuffs;   // Simulation data buffers
-
-	std::vector<cl::Memory> interop_resources;  // Bloat
-	std::vector<cl::Event> acquire_wait_list,   // Bloat
-	                       release_wait_list;   // Bloat
-
-	// OpenGL related variables
-	std::unique_ptr<QOpenGLShader> vs, fs;
-	std::unique_ptr<QOpenGLShaderProgram> sp;
-	std::array<std::unique_ptr<QOpenGLBuffer>, 2> vbos;
-	std::array<std::unique_ptr<QOpenGLVertexArrayObject>, 2> vaos;
+	std::array<std::unique_ptr<cl::sycl::buffer<real4>>, 2> posBuffs;   // Simulation data buffers
+	std::array<std::unique_ptr<cl::sycl::buffer<real4>>, 2> velBuffs;   // Simulation data buffers
 
 	bool rightMouseButtonPressed;           // Variables to enable dragging
 	QPoint mousePos;                        // Variables to enable dragging

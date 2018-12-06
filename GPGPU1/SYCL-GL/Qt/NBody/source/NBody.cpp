@@ -13,10 +13,10 @@ NBody::NBody(std::size_t plat_id,
 	, mass_min(100.f)
 	, mass_max(500.f)
 	, dev_id(0)
-    , posBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} },
-                  cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} } } }
-    , velBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} },
-                  cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} } } }
+    //, posBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} },
+    //              cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} } } }
+    //, velBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} },
+    //              cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} } } }
     , dist(3 * std::max({ x_abs_range,
                           y_abs_range ,
                           z_abs_range }))
@@ -128,6 +128,14 @@ void NBody::initializeCL()
 {
 	qDebug("NBody: Entering initializeCL");
 
+    // Create OpenCL Buffers
+    std::transform(vbos.cbegin(), vbos.cend(), CL_posBuffs.begin(), [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
+    {
+        return cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() };
+    });
+
+    for (auto& CL_velBuff : CL_velBuffs) CL_velBuff = cl::Buffer{ CLcontext(), CL_MEM_READ_WRITE, particle_count * sizeof(real4) };
+
     context = cl::sycl::context{ CLcontext()() };
     device = cl::sycl::device{ CLdevices().at(dev_id)() };
     compute_queue = cl::sycl::queue{ CLcommandqueues().at(dev_id)(), context };
@@ -136,24 +144,18 @@ void NBody::initializeCL()
     auto extensions = device.get_info<cl::sycl::info::device::extensions>();
 	cl_khr_gl_event_supported = std::find(extensions.cbegin(), extensions.cend(), "cl_khr_gl_event") != extensions.cend();
 
-	// Create Buffers
     for (auto& velBuff : velBuffs)
     {
-        velBuff = cl::sycl::buffer<real4>{ cl::sycl::range<1>{ particle_count } };
+        velBuff = std::make_unique<cl::sycl::buffer<real4>>( cl::sycl::range<1>{ particle_count } );
 
-        auto access = velBuff.get_access<cl::sycl::access::mode::discard_write>();
+        auto access = velBuff->get_access<cl::sycl::access::mode::discard_write>();
 
         std::fill_n(access.get_pointer(), access.get_count(), real4{ 1, 1, 1, 1 });
     }
 
-    std::transform(vbos.cbegin(), vbos.cend(), CL_posBuffs.begin(), [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
-    {
-        return cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() };
-    });
-
 	std::transform(CL_posBuffs.cbegin(), CL_posBuffs.cend(), posBuffs.begin(), [this](const cl::BufferGL& buff)
 	{
-        return cl::sycl::buffer<real4>{ buff(), context };
+        return std::make_unique<cl::sycl::buffer<real4>>( buff(), context );
 	});
 
 	// Init bloat vars
@@ -210,14 +212,14 @@ void NBody::updateScene()
     cl::Event acquire, release;
 
     CLcommandqueues().at(dev_id).enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire);
-    acquire.wait();
+    acquire.wait(); cl::finish();
 
     compute_queue.submit([&](cl::sycl::handler& cgh)
     {
-        auto pos = posBuffs[DoubleBuffer::Front].get_access<cl::sycl::access::mode::read>(cgh);
-        auto new_pos = posBuffs[DoubleBuffer::Back].get_access<cl::sycl::access::mode::write>(cgh);
-        auto vel = velBuffs[DoubleBuffer::Front].get_access<cl::sycl::access::mode::read>(cgh);
-        auto new_vel = velBuffs[DoubleBuffer::Back].get_access<cl::sycl::access::mode::write>(cgh);
+        //auto pos = posBuffs[DoubleBuffer::Front]->get_access<cl::sycl::access::mode::read>(cgh);
+        //auto new_pos = posBuffs[DoubleBuffer::Back]->get_access<cl::sycl::access::mode::write>(cgh);
+        //auto vel = velBuffs[DoubleBuffer::Front]->get_access<cl::sycl::access::mode::read>(cgh);
+        auto new_vel = velBuffs[DoubleBuffer::Back]->get_access<cl::sycl::access::mode::write>(cgh);
 
         cgh.parallel_for<kernels::NBodyStep>(cl::sycl::range<1>{ particle_count }, [=](const cl::sycl::item<1> item)
         {
@@ -315,7 +317,7 @@ void NBody::updateScene()
             xyz(newVel) = xyz(oldVel) + xyz(acc) * deltaTime;
             newVel.w() = oldVel.w();
             */
-            new_pos[item] = real4{ 0, 0, 0, 0 };
+            //new_pos[item] = real4{ 0, 0, 0, 0 };
             new_vel[item] = real4{ 0, 0, 0, 0 };
         });
     });
@@ -331,15 +333,17 @@ void NBody::updateScene()
     CLcommandqueues().at(dev_id).enqueueReleaseGLObjects(&interop_resources, nullptr, &release);
 
     // Wait for all OpenCL commands to finish
-    if (!cl_khr_gl_event_supported)
+    //if (!cl_khr_gl_event_supported)
         cl::finish();
-    else
-        release.wait();
+    //else
+    //    release.wait();
     
     // Swap front and back buffer handles
     std::swap(vaos[Front], vaos[Back]);
     std::swap(posBuffs[Front], posBuffs[Back]);
     std::swap(velBuffs[Front], velBuffs[Back]);
+    std::swap(CL_posBuffs[Front], CL_posBuffs[Back]);
+    std::swap(CL_velBuffs[Front], CL_velBuffs[Back]);
     
     imageDrawn = false;
 }
@@ -363,14 +367,14 @@ void NBody::render()
     sp->release(); checkGLerror();
 
     // Wait for all drawing commands to finish
-    if (!cl_khr_gl_event_supported)
-    {
+    //if (!cl_khr_gl_event_supported)
+    //{
         glFuncs->glFinish(); checkGLerror();
-    }
-    else
-    {
-        glFuncs->glFlush(); checkGLerror();
-    }
+    //}
+    //else
+    //{
+    //    glFuncs->glFlush(); checkGLerror();
+    //}
     imageDrawn = true;
 }
 
