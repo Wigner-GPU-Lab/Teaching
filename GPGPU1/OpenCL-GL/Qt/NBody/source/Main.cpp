@@ -1,10 +1,10 @@
+// Custom made includes
+#include <NBody.hpp>
+
 // Qt5 includes
 #include <QGuiApplication>
 #include <QMessageLogger>
 #include <QCommandLineParser>
-
-// Custom made includes
-#include <NBody.hpp>
 
 
 int main(int argc, char *argv[])
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     nbody.setVisibility(QWindow::AutomaticVisibility);
     nbody.setWidth(1280);
     nbody.setHeight(720);
-    nbody.setMaxFPS(60);
+    //nbody.setMaxFPS(62);
     //nbody.setMaxIPS(60);
 	nbody.setAnimating(true);
 
