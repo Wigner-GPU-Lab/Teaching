@@ -14,7 +14,7 @@
 #include <QVector>
 
 // C++ includes
-#include <array>
+#include <array>		// std::array
 #include <fstream>
 #include <memory>
 #include <future>
@@ -22,6 +22,7 @@
 #include <memory>
 #include <sstream>
 #include <algorithm>
+#include <memory>		// std::unique_ptr
 
 using real = cl_float;
 using real4 = cl_float4;

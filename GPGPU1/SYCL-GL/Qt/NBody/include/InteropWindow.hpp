@@ -1,18 +1,16 @@
 #pragma once
 
+// OpenCL behavioral defines
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+
+// OpenCL include
+#include <CL/cl2.hpp>
+
 // Qt5 includes
 #include <QtGui>
 #include <QOpenGLFunctions_3_3_Core>
-#include <qpa/qplatformnativeinterface.h>
-
-#ifdef _WIN32
-#include <QtPlatformHeaders/QWGLNativeContext>
-#endif
-
-#ifdef __linux__
-#undef Bool
-#include <QtPlatformHeaders/QGLXNativeContext>
-#endif
 
 // Logging
 #include <QMessageLogger>
@@ -22,14 +20,6 @@
 #include <climits>
 #include <chrono>
 #include <algorithm>
-
-// OpenCL behavioral defines
-#define CL_HPP_ENABLE_EXCEPTIONS
-#define CL_HPP_MINIMUM_OPENCL_VERSION 120
-#define CL_HPP_TARGET_OPENCL_VERSION 120
-
-// OpenCL include
-#include <CL/cl2.hpp>
 
 #define QTIMER
 //#define STDTIMER

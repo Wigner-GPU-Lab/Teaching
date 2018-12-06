@@ -34,7 +34,7 @@ target_include_directories (${Target_Name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/in
 												  ${ComputeCpp_INCLUDE_DIRS})
 
 # Target link directives
-target_link_libraries(${Target_Name} PUBLIC Qt5::Core Qt5::Gui Qt5::OpenGL Qt5::WinMain
+target_link_libraries(${Target_Name} PUBLIC Qt5::Core Qt5::Gui Qt5::OpenGL $<$<PLATFORM_ID:Windows>:Qt5::WinMain>
 											OpenGL::GL)
 
 # Automatically invoke Qt tools on source files

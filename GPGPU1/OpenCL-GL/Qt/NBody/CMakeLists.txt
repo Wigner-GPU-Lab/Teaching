@@ -33,12 +33,12 @@ target_include_directories (${Target_Name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/in
                                                   ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
 
 # Target link directives
-target_link_libraries(${Target_Name} PUBLIC Qt5::Core Qt5::Gui Qt5::OpenGL Qt5::WinMain
+target_link_libraries(${Target_Name} PUBLIC Qt5::Core Qt5::Gui Qt5::OpenGL $<$<PLATFORM_ID:Windows>:Qt5::WinMain>
                                             OpenCL::OpenCL
 											OpenGL::GL)
 
 # Automatically invoke Qt tools on source files
-set_target_properties(${Target_Name} PROPERTIES CXX_STANDARD 11
+set_target_properties(${Target_Name} PROPERTIES CXX_STANDARD 14
                                                 CXX_STANDARD_REQUIRED ON
                                                 AUTOMOC ON)
 

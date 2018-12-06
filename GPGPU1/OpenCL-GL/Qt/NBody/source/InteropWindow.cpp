@@ -1,5 +1,15 @@
 #include <InteropWindow.hpp>
 
+// Qt5 includes
+#include <qpa/qplatformnativeinterface.h>
+#ifdef _WIN32
+#include <QtPlatformHeaders/QWGLNativeContext>
+#endif
+#ifdef __linux__
+#undef Bool
+#include <QtPlatformHeaders/QGLXNativeContext>
+#endif
+
 // C++ includes
 #include <limits>
 
