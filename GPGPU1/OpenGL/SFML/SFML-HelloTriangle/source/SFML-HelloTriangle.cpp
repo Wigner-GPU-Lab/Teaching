@@ -164,7 +164,9 @@ int main()
 		// Kapcsoljuk be a hatrafele nezo lapok eldobasat
 		//glEnable(GL_CULL_FACE);
 		
-		m_matWorld = glm::rotate(0.01f, glm::vec3(0,0,1)) * glm::rotate(0.02f, glm::vec3(0,1,0)) * m_matWorld;
+		//m_matWorld = glm::rotate(0.01f, glm::vec3(0,0,1)) * glm::rotate(0.02f, glm::vec3(0,1,0)) * m_matWorld;
+		glm::rotate(m_matWorld, 0.01f, glm::vec3(0, 0, 1));
+		glm::rotate(m_matWorld, 0.02f, glm::vec3(0, 1, 0));
 		glUniformMatrix4fv(worldMatrixLocation, 1, GL_FALSE, &m_matWorld[0][0]);
 
         // Torlesi szin beallitasa
