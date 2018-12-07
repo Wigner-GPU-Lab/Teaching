@@ -125,15 +125,15 @@ inline const auto iNewState    = Int<1>();
 inline const auto iStateErrEst = Int<2>();
 
 //This is the Runge-Kutta stepper wrapper, that tries to step, and if the error is too large, tries again, with a smaller step size
-template<typename TStepper, typename TTime, typename TState, typename TRHS>
-auto RungeKuttaRepeater( TStepper&& stepper, TTime const& time, TTime const& h, TState const& state, TRHS&& rhs )
+template<typename TStepper, typename TTol, typename TTime, typename TState, typename TRHS>
+auto RungeKuttaRepeater( TStepper&& stepper, TTol const& atol, TTol const& rtol, TTime const& time, TTime const& h, TState const& state, TRHS&& rhs )
 {
 	struct FoldState
 	{
 		double atol, rtol, last_error;
 		bool reject;
 	};
-	FoldState fs0{1e-7, 1e-7, 1e-4, false};
+	FoldState fs0{atol, rtol, 1e-4, false};
 
 	struct UnfoldState{} ufs0;
 
@@ -170,8 +170,8 @@ auto RungeKuttaRepeater( TStepper&& stepper, TTime const& time, TTime const& h, 
 
 //This driver keeps stepping the ODE by calling the Runge-Kutta repeater until some end condition is met
 //and folds the produced (time, h, state) triplets into some user defined FoldState
-template<typename TStepper, typename TTime, typename TState, typename TRHS, typename FFoldFunc, typename FoldState, typename FEndCondition>
-auto ODEDriver(TStepper&& stepper, TTime&& t0, TState&& initial_state, TRHS&& rhs, FFoldFunc&& ff, FoldState&& foldstate, FEndCondition&& ec)
+template<typename TStepper, typename TTol, typename TTime, typename TState, typename TRHS, typename FFoldFunc, typename FoldState, typename FEndCondition>
+auto ODEDriver(TStepper&& stepper, TTol const& atol, TTol const& rtol, TTime const& t0, TState&& initial_state, TRHS&& rhs, FFoldFunc&& ff, FoldState&& foldstate, FEndCondition&& ec)
 {
 	FoldState foldstate0 = std::forward<FoldState>(foldstate);
 	struct UnfoldState{} ufs0;
@@ -179,7 +179,7 @@ auto ODEDriver(TStepper&& stepper, TTime&& t0, TState&& initial_state, TRHS&& rh
 	return mutu(
 		[&](auto && ths, auto&& ufs)
 		{
-			auto tmp = RungeKuttaRepeater(stepper, ths[iTime], ths[iStepsize], ths[iState], rhs)[Int<1>()];//this last index selects the (time, h, state) triplet from the return value
+			auto tmp = RungeKuttaRepeater(stepper, atol, rtol, ths[iTime], ths[iStepsize], ths[iState], rhs)[Int<1>()];//this last index selects the (time, h, state) triplet from the return value
 			return std::make_pair( tmp, ufs );
 		},
 		[&](FoldState& fs, auto && ths)
@@ -193,7 +193,6 @@ auto ODEDriver(TStepper&& stepper, TTime&& t0, TState&& initial_state, TRHS&& rh
 struct LVState
 {
 	double r, w;
-	LVState( double r0, double w0 ):r(r0), w(w0){}
 	double const& operator[]( Int<0> )const{ return r; }
 	double const& operator[]( Int<1> )const{ return w; }
 };
@@ -250,8 +249,8 @@ int main()
 
 	double t0 = 0.0;
 	LVState s0{ 5.0, 5.0 };
-	auto rhs = [=](double t, LVState const& s){ return LVState( a*s.r - b*s.r*s.w, d*s.r*s.w - c*s.w ); };
-	auto fendcond = [](auto&& ths){ return ths[Int<0>()] < 120.0; };
+	auto rhs = [=](double t, LVState const& s){ return LVState{ a*s.r - b*s.r*s.w, d*s.r*s.w - c*s.w }; };
+	auto fendcond = [](auto&& ths){ return ths[iTime] < 120.0; };
 
 	std::ofstream file("out.txt");
 
@@ -271,7 +270,7 @@ int main()
 
 	Logger logger{&file};
 
-	auto res = ODEDriver(dps, t0, s0, rhs, foldfunc, logger, fendcond );
+	auto res = ODEDriver(dps, 1e-5, 1e-5, t0, s0, rhs, foldfunc, logger, fendcond );
 	//res is the (Logger, (final time, final stepsize, final state), final unfold state)
 	std::cout << "Final time:     " << res[Int<1>()][iTime] << "\n";
 	std::cout << "Final stepsize: " << res[Int<1>()][iStepsize] << "\n";
