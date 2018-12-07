@@ -10,5 +10,7 @@ if (WIN32)
   find_package(glm)
 endif (WIN32)
 
-# Recurse into sample code directories
-add_subdirectory (Schrodinger)
+# Recurse into sample code directories (Current Schroedinger implementation is Windows-only)
+if (WIN32)
+  add_subdirectory (Schrodinger)
+endif (WIN32)
