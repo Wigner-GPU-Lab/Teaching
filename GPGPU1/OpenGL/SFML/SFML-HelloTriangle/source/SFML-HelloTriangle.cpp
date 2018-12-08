@@ -9,7 +9,15 @@
 int main()
 {
     // Fo ablak letrehozasa (ContextSettings-ben lehet OpenGL verziot (deafult a legnagyobb), anti-aliasingot es stencil buffer melyseget is allitani)
-    sf::RenderWindow window(sf::VideoMode(1024, 768), "SFML / OpenGL test", sf::Style::Default, sf::ContextSettings(32));
+    sf::RenderWindow window(sf::VideoMode(1024, 768),
+	                        "SFML / OpenGL test",
+							sf::Style::Default,
+							sf::ContextSettings(32,
+							                    8,
+							                    2,
+							                    3, 3,
+							                    sf::ContextSettings::Attribute::Core));
+    window.setVerticalSyncEnabled(true);
 
 	// OpenGL kontext verzio ellenorzese
 	if( sf::Uint32(window.getSettings().majorVersion * 10 + window.getSettings().majorVersion) < 33 )
@@ -165,8 +173,8 @@ int main()
 		//glEnable(GL_CULL_FACE);
 		
 		//m_matWorld = glm::rotate(0.01f, glm::vec3(0,0,1)) * glm::rotate(0.02f, glm::vec3(0,1,0)) * m_matWorld;
-		glm::rotate(m_matWorld, 0.01f, glm::vec3(0, 0, 1));
-		glm::rotate(m_matWorld, 0.02f, glm::vec3(0, 1, 0));
+		m_matWorld = glm::rotate(m_matWorld, 0.01f, glm::vec3(0, 0, 1));
+		m_matWorld = glm::rotate(m_matWorld, 0.02f, glm::vec3(0, 1, 0));
 		glUniformMatrix4fv(worldMatrixLocation, 1, GL_FALSE, &m_matWorld[0][0]);
 
         // Torlesi szin beallitasa
@@ -190,24 +198,24 @@ int main()
 		glDisable(GL_CULL_FACE);
 		
 		// FPS szoveg frissitese
-		if( clock.getElapsedTime().asSeconds() > 1.f )
-		{
-			sf::Time elapsedTime = clock.getElapsedTime();	// Get elapsed time since last update
-			std::stringstream temp; temp << (int)(refFrameCount/elapsedTime.asSeconds());
-			FPSdrawable.setString(sf::String(temp.str()));
-			clock.restart();
-			refFrameCount = 0;
-		}
+		//if( clock.getElapsedTime().asSeconds() > 1.f )
+		//{
+		//	sf::Time elapsedTime = clock.getElapsedTime();	// Get elapsed time since last update
+		//	std::stringstream temp; temp << (int)(refFrameCount/elapsedTime.asSeconds());
+		//	FPSdrawable.setString(sf::String(temp.str()));
+		//	clock.restart();
+		//	refFrameCount = 0;
+		//}
 		
 		// Minden befejezetlen OpenGL parancs bevarasa
 		glFinish(); checkError("glFinish");
 		
-		// FPS szoveg kirajzolasa
-        window.pushGLStates();									// Minden OpenGL allapot elmentese
+		// FPS szoveg kirajzolasa // Nem működik 3.3-as Core profile mellett
+        //window.pushGLStates();									// Minden OpenGL allapot elmentese
         //FPSdrawable.setColor(sf::Color(255, 255, 255, 170));	// Szin beallitasa
-        FPSdrawable.setPosition(10.f, 10.f);					// Pozicio beallitasa
-        window.draw(FPSdrawable);								// Szoveg render
-        window.popGLStates();									// OpenGL allapotok visszatoltese
+        //FPSdrawable.setPosition(10.f, 10.f);					// Pozicio beallitasa
+        //window.draw(FPSdrawable);								// Szoveg render
+        //window.popGLStates();									// OpenGL allapotok visszatoltese
 		
 		// Program hasznalata nem allitodik vissza
 		glUseProgram(glProgram); checkError("glUseProgram");
