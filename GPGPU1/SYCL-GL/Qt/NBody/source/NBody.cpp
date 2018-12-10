@@ -13,10 +13,6 @@ NBody::NBody(std::size_t plat_id,
 	, mass_min(100.f)
 	, mass_max(500.f)
 	, dev_id(0)
-    //, posBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} },
-    //              cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} } } }
-    //, velBuffs{ { cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} },
-    //              cl::sycl::buffer<real4>{ cl::sycl::range<1>{1} } } }
     , dist(3 * std::max({ x_abs_range,
                           y_abs_range ,
                           z_abs_range }))
@@ -144,18 +140,20 @@ void NBody::initializeCL()
     auto extensions = device.get_info<cl::sycl::info::device::extensions>();
 	cl_khr_gl_event_supported = std::find(extensions.cbegin(), extensions.cend(), "cl_khr_gl_event") != extensions.cend();
 
-    for (auto& velBuff : velBuffs)
+    std::transform(CL_velBuffs.cbegin(), CL_velBuffs.cend(), velBuffs.begin(), [this](const cl::Buffer& buff)
     {
-        velBuff = std::make_unique<cl::sycl::buffer<real4>>( cl::sycl::range<1>{ particle_count } );
+        auto result = std::make_unique<cl::sycl::buffer<real4>>(buff(), compute_queue);
 
-        auto access = velBuff->get_access<cl::sycl::access::mode::discard_write>();
+        auto access = result->get_access<cl::sycl::access::mode::discard_write>();
 
-        std::fill_n(access.get_pointer(), access.get_count(), real4{ 1, 1, 1, 1 });
-    }
+        std::fill_n(access.get_pointer(), access.get_count(), real4{ 0, 0, 0, 0 });
+
+        return result;
+    });
 
 	std::transform(CL_posBuffs.cbegin(), CL_posBuffs.cend(), posBuffs.begin(), [this](const cl::BufferGL& buff)
 	{
-        return std::make_unique<cl::sycl::buffer<real4>>( buff(), context );
+        return std::make_unique<cl::sycl::buffer<real4>>(buff(), compute_queue);
 	});
 
 	// Init bloat vars
@@ -216,127 +214,63 @@ void NBody::updateScene()
 
     compute_queue.submit([&](cl::sycl::handler& cgh)
     {
-        //auto pos = posBuffs[DoubleBuffer::Front]->get_access<cl::sycl::access::mode::read>(cgh);
-        //auto new_pos = posBuffs[DoubleBuffer::Back]->get_access<cl::sycl::access::mode::write>(cgh);
-        //auto vel = velBuffs[DoubleBuffer::Front]->get_access<cl::sycl::access::mode::read>(cgh);
+        auto old_pos_mass = posBuffs[DoubleBuffer::Front]->get_access<cl::sycl::access::mode::read>(cgh);
+        auto new_pos_mass = posBuffs[DoubleBuffer::Back]->get_access<cl::sycl::access::mode::write>(cgh);
+        auto old_vel = velBuffs[DoubleBuffer::Front]->get_access<cl::sycl::access::mode::read>(cgh);
         auto new_vel = velBuffs[DoubleBuffer::Back]->get_access<cl::sycl::access::mode::write>(cgh);
 
-        cgh.parallel_for<kernels::NBodyStep>(cl::sycl::range<1>{ particle_count }, [=](const cl::sycl::item<1> item)
+        cgh.parallel_for<kernels::NBodyStep>(cl::sycl::range<1>{ particle_count },
+                                             [=, count = particle_count](const cl::sycl::item<1> item)
         {
-            /*
-            real4 myPos = pos[item];
-            real4 acc = { 0.f, 0.f, 0.f, 0.f };
-            real epsSqr = std::numeric_limits<real>::epsilon();
-            real deltaTime = real(0.005);
-
-            auto xyz = [](real4& vec) { return vec.swizzle<0, 1, 2>(); };
-            auto interact = [&](const size_t i)
+            auto xyz = [](real4 vec) { return real3{ vec.x(), vec.y(), vec.z() }; };// { return vec.swizzle<0, 1, 2>(); };
+            auto distance = [](const real3 vec)
             {
-                real4 p = pos[i];
-                real4 r;
-                xyz(r) = xyz(p) - xyz(myPos);
-                real distSqr = r.x() * r.x() + r.y() * r.y() + r.z() * r.z();
-
-                real invDist = 1.0f / sqrt(distSqr + epsSqr);
-                real invDistCube = invDist * invDist * invDist;
-                real s = p.w() * invDistCube;
-
-                // accumulate effect of all particles
-                xyz(acc) += s * xyz(r);
+#ifdef __SYCL_DEVICE_ONLY__
+                return cl::sycl::sqrt((real)1 + vec.x() * vec.x() + vec.y() * vec.y() + vec.z() * vec.z());
+#else
+                return vec.x();
+#endif
             };
 
-            // NOTE 1:
-            //
-            // This loop construct unrolls the outer loop in chunks of UNROLL_FACTOR
-            // up to a point that still fits into numBodies. After the unrolled part
-            // the remainder os particles are accounted for. (NOTE 1.1: the loop variable)
-            // 'j' is not used anywhere in the body. It's only used as a trivial
-            // unroll construct. NOTE 1.2: 'i' is left intact after the unrolled loops.
-            // The finishing loop picks up where the other left off.
-            //
-            // NOTE 2:
-            //
-            // epsSqr is used to omit self interaction checks alltogether by introducing
-            // a minimal skew in the deistance calculation. Thus, the almost infinity
-            // in invDistCube is suppressed by the ideally 0 distance calulated by
-            // r.xyz = p.xyz - myPos.xyz where the right-hand side hold identical values.
-            //
-            constexpr size_t factor = 8; // loop unroll depth
-            unroll_loop<factor>(0, particle_count, interact);
+            real4 my_pos_mass = old_pos_mass[item];
+            real3 pos = xyz(my_pos_mass);
+            real mass = my_pos_mass.w();
+            real dt = real(0.005f);
 
-            real4 oldVel = vel[item];
+            real3 acc = { 0, 0, 0 };
+            auto interact = [&](const size_t i)
+            {
+                real4 temp_pos_mass = old_pos_mass[i];
+                real3 temp_pos = xyz(temp_pos_mass);
+                real temp_mass = temp_pos_mass.w();
+
+                real3 r = temp_pos - pos;
+
+                real invDist = (real)1 / distance(r);
+                real s = temp_mass * (invDist * invDist * invDist);
+
+                acc += s * r;
+            };
+            unroll_loop<4>(0, count, interact);
 
             // updated position and velocity
-            real4 newPos;
-            xyz(newPos) = xyz(myPos) + xyz(oldVel) * deltaTime + xyz(acc) * real(0.5) * deltaTime * deltaTime;
-            newPos.w() = myPos.w();
-
-            real4 newVel;
-            xyz(newVel) = xyz(oldVel) + xyz(acc) * deltaTime;
-            newVel.w() = oldVel.w();
+            real3 oldVel = xyz(old_vel[item]);
+            real3 newVel = oldVel + acc * dt;
+            real3 new_pos = pos + oldVel * dt + acc * real(0.5f) * dt * dt;
 
             // write to global memory
-            new_pos[item] = newPos;
-            new_vel[item] = newVel;
-            */
-            /*
-            new_pos[item] = pos[item];
-            new_vel[item] = vel[item];
-            */
-            /*
-            real4 myPos = pos[item];
-            real4 acc = { 0.f, 0.f, 0.f, 0.f };
-            real epsSqr = std::numeric_limits<real>::epsilon();
-            real deltaTime = real(0.005);
-
-            auto xyz = [](real4& vec) { return vec.swizzle<0, 1, 2>(); };
-            for (int i = 0; i < particle_count; ++i)
-            {
-                real4 p = pos[i];
-                real4 r;
-                xyz(r) = xyz(p) - xyz(myPos);
-                real distSqr = r.x() * r.x() + r.y() * r.y() + r.z() * r.z();
-
-                real invDist = 1.0f / sqrt(distSqr + epsSqr);
-                real invDistCube = invDist * invDist * invDist;
-                real s = p.w() * invDistCube;
-
-                // accumulate effect of all particles
-                auto eff = s * xyz(r);
-                acc += real4{ eff.x(), eff.y(), eff.z(), 0.0f };
-            }
-
-            real4 oldVel = vel[item];
-
-            // updated position and velocity
-            real4 newPos;
-            xyz(newPos) = xyz(myPos) + xyz(oldVel) * deltaTime + xyz(acc) * real(0.5) * deltaTime * deltaTime;
-            newPos.w() = myPos.w();
-
-            real4 newVel;
-            xyz(newVel) = xyz(oldVel) + xyz(acc) * deltaTime;
-            newVel.w() = oldVel.w();
-            */
-            //new_pos[item] = real4{ 0, 0, 0, 0 };
-            new_vel[item] = real4{ 0, 0, 0, 0 };
+            new_pos_mass[item] = real4{ new_pos.x(), new_pos.y(), new_pos.z(), mass };
+            new_vel[item] = real4{ newVel.x(), newVel.y(), newVel.z(), 1 };
         });
     });
-
-    //{
-    //    auto new_vel = velBuffs[DoubleBuffer::Back].get_access<cl::sycl::access::mode::read>();
-    //
-    //    std::stringstream ss; ss << new_vel[0].x() << std::endl;
-    //
-    //    qDebug(ss.str().c_str());
-    //}
 
     CLcommandqueues().at(dev_id).enqueueReleaseGLObjects(&interop_resources, nullptr, &release);
 
     // Wait for all OpenCL commands to finish
-    //if (!cl_khr_gl_event_supported)
+    if (!cl_khr_gl_event_supported)
         cl::finish();
-    //else
-    //    release.wait();
+    else
+        release.wait();
     
     // Swap front and back buffer handles
     std::swap(vaos[Front], vaos[Back]);
@@ -367,14 +301,14 @@ void NBody::render()
     sp->release(); checkGLerror();
 
     // Wait for all drawing commands to finish
-    //if (!cl_khr_gl_event_supported)
-    //{
+    if (!cl_khr_gl_event_supported)
+    {
         glFuncs->glFinish(); checkGLerror();
-    //}
-    //else
-    //{
-    //    glFuncs->glFlush(); checkGLerror();
-    //}
+    }
+    else
+    {
+        glFuncs->glFlush(); checkGLerror();
+    }
     imageDrawn = true;
 }
 
