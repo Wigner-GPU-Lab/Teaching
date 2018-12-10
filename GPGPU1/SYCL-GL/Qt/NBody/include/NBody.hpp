@@ -32,6 +32,7 @@
 
 using real = cl_float;
 using real4 = cl::sycl::float4;
+using real3 = cl::sycl::float3;
 
 namespace kernels { struct NBodyStep; }
 
