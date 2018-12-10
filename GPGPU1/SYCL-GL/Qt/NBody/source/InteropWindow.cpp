@@ -179,20 +179,23 @@ bool InteropWindow::lookForDeviceType(cl::Platform& plat_in, cl_bitfield devtype
     std::vector<cl::Device> possible_devices;
 
     CL_err = plat_in.getDevices(devtype_in, &possible_devices); checkCLerror();
-    std::remove_if(possible_devices.begin(), possible_devices.end(), [&properties](const cl::Device& device)
-    {
-        cl_int err = CL_SUCCESS;
-        try
-        {
-            cl::Context(device, properties.data(), nullptr, nullptr);
-        }
-        catch (cl::Error e)
-        {
-            err = e.err();
-        }
-        
-        return err != CL_SUCCESS;
-    });
+    possible_devices.erase(std::remove_if(possible_devices.begin(),
+                                          possible_devices.end(),
+                                          [&properties](const cl::Device& device)
+                                          {
+                                              cl_int err = CL_SUCCESS;
+                                              try
+                                              {
+                                                  cl::Context(device, properties.data(), nullptr, nullptr);
+                                              }
+                                              catch (cl::Error e)
+                                              {
+                                                  err = e.err();
+                                              }
+                                          
+                                              return err != CL_SUCCESS;
+                                          }),
+                           possible_devices.end());
     
     if (!possible_devices.empty())
     {
