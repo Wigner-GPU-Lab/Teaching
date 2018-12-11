@@ -20,7 +20,7 @@
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
-    QCoreApplication::setApplicationName("OpenCL-GL NBody sample");
+    QCoreApplication::setApplicationName("SYCL-GL NBody sample");
     QCoreApplication::setApplicationVersion("1.0");
 
     QCommandLineParser parser;
