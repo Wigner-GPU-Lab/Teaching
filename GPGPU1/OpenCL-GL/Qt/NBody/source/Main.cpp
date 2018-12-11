@@ -53,10 +53,11 @@ int main(int argc, char *argv[])
     else count = 8192u;
 
     NBody nbody(plat_id, dev_type, count);
-    nbody.setVisibility(QWindow::AutomaticVisibility);
-    nbody.setWidth(1280);
-    nbody.setHeight(720);
-    //nbody.setMaxFPS(62);
+    nbody.setVisibility(QWindow::Maximized);
+    //nbody.setVisibility(QWindow::AutomaticVisibility);
+    //nbody.setWidth(1280);
+    //nbody.setHeight(720);
+    nbody.setMaxFPS(60);
     //nbody.setMaxIPS(60);
 	nbody.setAnimating(true);
 
