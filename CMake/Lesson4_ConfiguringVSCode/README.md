@@ -94,8 +94,12 @@ Some examples of successful configurations:
   }
 }
 ```
+Be careful that each kit is in {} brackets and successive kit's brackets are separated by commas. After modifications, save the file and reload Visual Studio Code and rescan for kits.
 
+## Starting a new C++ project
+To start a new C++ project from Visual Studio select File->Open folder. Navigate to the location you would like to use, create a folder by right clicking, and finally select the desired folder.
 
+To configure, open the command palette: Ctrl+Shift+P, type CMAKE and select Quick Start. The kit selection opens, choose the desired configuration, like Visual Studio ... amd64 or Clang. CMake may asks to collect usage data, you may say No. Enter the name for the new project and in the next question, select executable. After these steps a CMakeLists.txt and a main.cpp file is created in the folder.
 
 <br><br>
 
