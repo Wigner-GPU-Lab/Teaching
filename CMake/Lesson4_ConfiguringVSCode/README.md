@@ -50,9 +50,10 @@ If the above update of the path to the CMake executable is not enough, you might
 {
   "cmake.cmakePath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
   "cmake.configureArgs": [
-        "-DCMAKE_MAKE_PROGRAM=C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\Ninja\\ninja.exe"
+    "-DCMAKE_MAKE_PROGRAM=C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\Ninja\\ninja.exe"
   ]
-}```
+}
+```
 
 ### Scan for kit does not find a compiler or build tool
 If the scan fails to find any or some of the compilers, you might try manually adding the necessary kits. Press Ctrl+Shift+P to open the command palette and search for `CMake: Edit user-local CMake kits`. A new text file titled `cmake-tools-kits.json` opens with the compilers found by the scan on your system. After installing Visual Studio or the Build Tools it should find multiple configurations, like amd64, amd64_arm, amd64_x86, x86, x86_amd64, x86_arm You can keep these (although you most likely dont need anything except the amd64 kit, the others are cross compilers for arm and older 32 bit architectures), but if you would like to add clang, you need to add a new kit, copy the amd64 configuration, and change the name.
@@ -61,35 +62,35 @@ Some examples of successful configurations:
 
 ```json
 {
-    "name": "Clang 8.0.0 for MSVC with Visual Studio Community 2017 (amd64)",
-    "visualStudio": "VisualStudio.15.0",
-    "visualStudioArchitecture": "amd64",
-    "compilers": {
-      "C": "C:\\Program Files\\LLVM\\bin\\clang-cl.exe",
-      "CXX": "C:\\Program Files\\LLVM\\bin\\clang-cl.exe"
-    }
+  "name": "Clang 8.0.0 for MSVC with Visual Studio Community 2017 (amd64)",
+  "visualStudio": "VisualStudio.15.0",
+  "visualStudioArchitecture": "amd64",
+  "compilers": {
+    "C": "C:\\Program Files\\LLVM\\bin\\clang-cl.exe",
+    "CXX": "C:\\Program Files\\LLVM\\bin\\clang-cl.exe"
+  }
 }```
 
 ```json
 {
-    "name": "Visual Studio Community 2017 - amd64",
-    "visualStudio": "VisualStudio.15.0",
-    "visualStudioArchitecture": "amd64",
-    "preferredGenerator": {
-      "name": "Visual Studio 15 2017",
-      "platform": "x64"
-    }
-  }```
+  "name": "Visual Studio Community 2017 - amd64",
+  "visualStudio": "VisualStudio.15.0",
+  "visualStudioArchitecture": "amd64",
+  "preferredGenerator": {
+    "name": "Visual Studio 15 2017",
+    "platform": "x64"
+  }
+}```
 
 
 ```json
 {
-    "name": "GCC for x86_64-w64-mingw32 7.2.0",
-    "compilers": {
-      "C": "C:\\Program Files\\Haskell Platform\\8.6.3\\mingw\\bin\\x86_64-w64-mingw32-gcc.exe",
-      "CXX": "C:\\Program Files\\Haskell Platform\\8.6.3\\mingw\\bin\\x86_64-w64-mingw32-g++.exe"
-    }
-  }```
+  "name": "GCC for x86_64-w64-mingw32 7.2.0",
+  "compilers": {
+    "C": "C:\\Program Files\\Haskell Platform\\8.6.3\\mingw\\bin\\x86_64-w64-mingw32-gcc.exe",
+    "CXX": "C:\\Program Files\\Haskell Platform\\8.6.3\\mingw\\bin\\x86_64-w64-mingw32-g++.exe"
+  }
+}```
 
 
 
