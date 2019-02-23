@@ -69,7 +69,8 @@ Some examples of successful configurations:
     "C": "C:\\Program Files\\LLVM\\bin\\clang-cl.exe",
     "CXX": "C:\\Program Files\\LLVM\\bin\\clang-cl.exe"
   }
-}```
+}
+```
 
 ```json
 {
@@ -80,7 +81,8 @@ Some examples of successful configurations:
     "name": "Visual Studio 15 2017",
     "platform": "x64"
   }
-}```
+}
+```
 
 
 ```json
@@ -90,7 +92,8 @@ Some examples of successful configurations:
     "C": "C:\\Program Files\\Haskell Platform\\8.6.3\\mingw\\bin\\x86_64-w64-mingw32-gcc.exe",
     "CXX": "C:\\Program Files\\Haskell Platform\\8.6.3\\mingw\\bin\\x86_64-w64-mingw32-g++.exe"
   }
-}```
+}
+```
 
 
 
