@@ -24,7 +24,3 @@ if(BUILD_TESTING)
   add_executable(test2 test2.cpp)
   add_test(NAME test2 COMMAND test2)
 endif(BUILD_TESTING)
-
-set(CPACK_PROJECT_NAME ${PROJECT_NAME})
-set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-include(CPack)
