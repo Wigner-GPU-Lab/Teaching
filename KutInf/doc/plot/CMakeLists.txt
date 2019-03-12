@@ -9,7 +9,6 @@ find_package (Gnuplot REQUIRED)
 add_custom_command(COMMAND ${GNUPLOT_EXECUTABLE} ${PROJECT_SOURCE_DIR}/script/sin.plt
                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
                    OUTPUT ${CMAKE_BINARY_DIR}/sin.png
-                   BYPRODUCTS ${CMAKE_BINARY_DIR}/sin.png
                    DEPENDS ${PROJECT_SOURCE_DIR}/script/sin.plt data
                    COMMENT "Generating plot")
 
