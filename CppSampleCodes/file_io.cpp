@@ -48,6 +48,9 @@ std::istream& operator>>(particle& p, std::istream& s)
         [&]() { double val; s >> val; return val; },
         [&]() { return !s.fail(); }))
     {
+        p = particle{ { temp[0], temp[1], temp[2] },
+                      { temp[3], temp[4], temp[5] },
+                      temp[6] };
         return s;
     }
     else
