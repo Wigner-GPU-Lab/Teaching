@@ -22,7 +22,6 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 add_custom_command(COMMAND ${PROJECT_NAME}
                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
                    OUTPUT ${CMAKE_BINARY_DIR}/sin.dat
-                   BYPRODUCTS ${CMAKE_BINARY_DIR}/sin.dat
                    DEPENDS ${PROJECT_NAME}
                    COMMENT "Generating data set")
 

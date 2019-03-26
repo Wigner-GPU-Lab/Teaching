@@ -402,3 +402,4 @@ To provide a toolchain file, provide the `CMAKE_TOOLCHAIN_FILE` variable when in
 ----------------------------------------------------------------------------------------------------
 ⏪ [Prior Lesson](../Lesson2_LinkC_CPP/)
          ⏫ [Back to Top](../)
+         [Next Lesson](../Lesson4_ConfiguringVSCode/) ⏩
