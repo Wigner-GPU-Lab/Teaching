@@ -45,8 +45,8 @@ std::istream& operator>>(particle& p, std::istream& s)
     };
 
     if (generate_until(temp.begin(), temp.end(),
-        [&]() { double val; s >> val; return val; },
-        [&]() { return !s.fail(); }))
+                       [&]() { double val; s >> val; return val; },
+                       [&]() { return !s.fail(); }))
     {
         p = particle{ { temp[0], temp[1], temp[2] },
                       { temp[3], temp[4], temp[5] },
