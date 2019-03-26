@@ -6,23 +6,23 @@
 
 struct particle
 {
-	std::array<double, 3> pos, vel;
-	double mass;
+    std::array<double, 3> pos, vel;
+    double mass;
+
+    static constexpr const char* delim = "\t";
 };
 
 std::ostream& operator<<(std::ostream& s, const particle& p)
-{
-	constexpr const auto delim = "\t";
+{   
+    for (const auto& arr : {p.pos, p.vel})
+        std::copy(arr.cbegin(), arr.cend(), std::ostream_iterator<double>{ s, particle::delim });
 
-	for (const auto& arr : {p.pos, p.vel})
-		std::copy(arr.cbegin(), arr.cend(), std::ostream_iterator<double>{ s, delim });
-
-	return s << delim << p.mass;
+    return s << particle::delim << p.mass;
 }
 
 std::istream& operator>>(particle& p, std::istream& s)
 {
-	constexpr const auto delim = "\t";
+    const auto state = s.rdstate();
 	const auto pos = s.tellg();
 
 	std::array<double, 7> temp;
@@ -44,11 +44,20 @@ std::istream& operator>>(particle& p, std::istream& s)
 		return true;
 	};
 
-	generate_until(temp.begin(), temp.end(),
-		           [&]() { double val; s >> val; return val; },
-		           [&]() { return !s.fail(); });
+	if (generate_until(temp.begin(), temp.end(),
+		               [&]() { double val; s >> val; return val; },
+		               [&]() { return !s.fail(); }))
+    {
+        return s;
+    }
+    else
+    {
+        s.seekg(pos);
+        s.setstate(state);
 
-	return s;
+        return s;
+    }
+	
 }
 
 int main()
