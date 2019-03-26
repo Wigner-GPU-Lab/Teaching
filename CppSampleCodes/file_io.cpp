@@ -1,8 +1,8 @@
 #include <array>
 #include <fstream>
 #include <iostream>
-#include <algorithm>	// std::copy
-#include <iterator>		// std::ostream_iterator
+#include <algorithm>    // std::copy
+#include <iterator>     // std::ostream_iterator
 
 struct particle
 {
@@ -23,30 +23,30 @@ std::ostream& operator<<(std::ostream& s, const particle& p)
 std::istream& operator>>(particle& p, std::istream& s)
 {
     const auto state = s.rdstate();
-	const auto pos = s.tellg();
+    const auto pos = s.tellg();
 
-	std::array<double, 7> temp;
+    std::array<double, 7> temp;
 
-	auto generate_until = [](auto first, auto last, auto gen, auto pred)
-	{
-		for (bool valid = pred(); first != last && valid; ++first, valid = pred())
-		{
-			if (valid)
-			{
-				*first = gen();
-			}
-			else
-			{
-				return false;
-			}
-		}
+    auto generate_until = [](auto first, auto last, auto gen, auto pred)
+    {
+        for (bool valid = pred(); first != last && valid; ++first, valid = pred())
+        {
+            if (valid)
+            {
+                *first = gen();
+            }
+            else
+            {
+                return false;
+            }
+        }
 
-		return true;
-	};
+        return true;
+    };
 
-	if (generate_until(temp.begin(), temp.end(),
-		               [&]() { double val; s >> val; return val; },
-		               [&]() { return !s.fail(); }))
+    if (generate_until(temp.begin(), temp.end(),
+        [&]() { double val; s >> val; return val; },
+        [&]() { return !s.fail(); }))
     {
         return s;
     }
@@ -57,10 +57,9 @@ std::istream& operator>>(particle& p, std::istream& s)
 
         return s;
     }
-	
 }
 
 int main()
 {
-	return 0;
+    return 0;
 }
