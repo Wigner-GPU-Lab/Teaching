@@ -28,15 +28,19 @@ struct Particle
 
 std::istream& operator>>( std::istream& s, Particle& p )
 {
-    std::getline(s, p.name, ' ');
-    if(p.name.size() == 0){ return s; }
+    auto restore_stream = [state = s.rdstate(), pos = s.tellg(), &s](){ s.seekg(pos); s.setstate(state); };
 
     std::string tmp;
-    std::getline(s, tmp, ' '); p.energy = std::stod(tmp);
-    if(tmp.size() == 0){ return s; }
+    std::getline(s, tmp, ' ');
+    if(tmp.size() == 0){ restore_stream(); return s; }
+    p.name = std::move(tmp);
 
+    std::getline(s, tmp, ' ');
+    if(tmp.size() == 0){ restore_stream(); return s; }
+    p.energy = std::stod(tmp);
+    
     std::getline(s, tmp, '\n');
-    if(tmp.size() == 0){ return s; }
+    if(tmp.size() == 0){ restore_stream(); return s; }
     
     std::stringstream ss(tmp);
     p.path.clear();
@@ -56,7 +60,7 @@ int main()
     std::vector<Particle> data;
 
     {
-        std::ifstream input("structured_io.txt");
+        std::ifstream input("data.txt");
 
         if( !input.is_open() )
         {
