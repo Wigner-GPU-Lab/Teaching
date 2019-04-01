@@ -225,11 +225,7 @@ void NBody::updateScene()
             auto xyz = [](real4 vec) { return real3{ vec.x(), vec.y(), vec.z() }; };// { return vec.swizzle<0, 1, 2>(); };
             auto distance = [](const real3 vec)
             {
-#ifdef __SYCL_DEVICE_ONLY__
                 return cl::sycl::sqrt((real)1 + vec.x() * vec.x() + vec.y() * vec.y() + vec.z() * vec.z());
-#else
-                return vec.x();
-#endif
             };
 
             real4 my_pos_mass = old_pos_mass[item];
