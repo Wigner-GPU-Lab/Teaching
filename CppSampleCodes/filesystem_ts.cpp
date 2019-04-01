@@ -2,7 +2,7 @@
 #include <filesystem> // for std::filesystem::path, std::filesystem::directory_iterator, std::filesystem::is_regular_file, std::filesystem::last_write_time, std::filesystem::file_size
 #include <iostream>   // for std::cout
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 int main()
 {
