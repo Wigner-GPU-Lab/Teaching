@@ -3,9 +3,6 @@
 // NBody configure
 #include <NBody-Config.hpp>
 
-// NBody includes
-#include <NBodyStep.hpp>
-
 // C++ behavioral defines
 #define _USE_MATH_DEFINES
 
@@ -20,7 +17,7 @@
 #include <QVector>
 
 // C++ includes
-#include <array>		// std::array
+#include <array>        // std::array
 #include <fstream>
 #include <memory>
 #include <future>
@@ -28,13 +25,19 @@
 #include <memory>
 #include <sstream>
 #include <algorithm>
-#include <memory>		// std::unique_ptr
+#include <memory>       // std::unique_ptr
 
 using real = cl_float;
 using real4 = cl::sycl::float4;
 using real3 = cl::sycl::float3;
 
 namespace kernels { struct NBodyStep; }
+
+enum DoubleBuffer
+{
+    Front = 0,
+    Back = 1
+};
 
 
 class NBody : public InteropWindow
