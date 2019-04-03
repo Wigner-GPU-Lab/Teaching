@@ -6,3 +6,4 @@ find_package (OpenGL REQUIRED)
 
 # Recurse into sample code directories
 add_subdirectory (NBody)
+add_subdirectory (Conway)
