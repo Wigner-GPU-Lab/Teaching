@@ -5,18 +5,7 @@ Conway::Conway(std::size_t plat_id,
                cl_bitfield dev_type,
                QWindow *parent)
     : InteropWindow(plat_id, dev_type, parent)
-    , particle_count(particle_count)
-    , x_abs_range(192.f)
-    , y_abs_range(128.f)
-    , z_abs_range(32.f)
-    , mass_min(100.f)
-    , mass_max(500.f)
     , dev_id(0)
-    , dist(3 * std::max({ x_abs_range,
-                          y_abs_range ,
-                          z_abs_range }))
-    , phi(0)
-    , theta(0)
     , imageDrawn(false)
     , needMatrixReset(true)
 {
@@ -24,175 +13,133 @@ Conway::Conway(std::size_t plat_id,
 
 
 // Override unimplemented InteropWindow function
-void NBody::initializeGL()
+void Conway::initializeGL()
 {
-	qDebug("NBody: Entering initializeGL");
-	// Initialize OpenGL resources
-	vs = std::make_unique<QOpenGLShader>(QOpenGLShader::Vertex, this);
-	fs = std::make_unique<QOpenGLShader>(QOpenGLShader::Fragment, this);
-	sp = std::make_unique<QOpenGLShaderProgram>(this);
-	vbos = { std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::VertexBuffer),
-		     std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::VertexBuffer) };
-	vaos = { std::make_unique<QOpenGLVertexArrayObject>(this),
-		     std::make_unique<QOpenGLVertexArrayObject>(this) };
+    qDebug("Conway: Entering initializeGL");
+    // Initialize OpenGL resources
+    vs = std::make_unique<QOpenGLShader>(QOpenGLShader::Vertex, this);
+    fs = std::make_unique<QOpenGLShader>(QOpenGLShader::Fragment, this);
+    sp = std::make_unique<QOpenGLShaderProgram>(this);
+    vbo = std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::VertexBuffer);
+    vao = std::make_unique<QOpenGLVertexArrayObject>(this);
+    texs = { std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target::Target2D),
+             std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target::Target2D) };
 
-	// Initialize frame buffer
-	glFuncs->glViewport(0, 0, width(), height());   checkGLerror();
-	glFuncs->glClearColor(0.0, 0.0, 0.0, 1.0);      checkGLerror();
-	glFuncs->glDisable(GL_DEPTH_TEST);              checkGLerror();
-	glFuncs->glDisable(GL_CULL_FACE);               checkGLerror();
+    // Initialize frame buffer
+    glFuncs->glViewport(0, 0, width(), height());   checkGLerror();
+    glFuncs->glClearColor(0.0, 0.0, 0.0, 1.0);      checkGLerror();
+    glFuncs->glDisable(GL_DEPTH_TEST);              checkGLerror();
+    glFuncs->glDisable(GL_CULL_FACE);               checkGLerror();
 
-	// Initialize simulation data
-	qDebug("NBody: Allocating host-side memory");
-	pos_mass.reserve(particle_count);
+    // Create shaders
+    qDebug("Conway: Building shaders...");
+    if (!vs->compileSourceFile( (shader_location + "/Vertex.glsl").c_str())) qWarning("%s", vs->log().data());
+    if (!fs->compileSourceFile( (shader_location + "/Fragment.glsl").c_str())) qWarning("%s", fs->log().data());
+    qDebug("Conway: Done building shaders");
 
-	qDebug("NBody: Setting initial states");
-	using uni = std::uniform_real_distribution<real>;
+    // Create and link shaderprogram
+    qDebug("Conway: Linking shaders...");
+    if (!sp->addShader(vs.get())) qWarning("Conway: Could not add vertex shader to shader program");
+    if (!sp->addShader(fs.get())) qWarning("Conway: Could not add fragment shader to shader program");
+    if (!sp->link()) qWarning("%s", sp->log().data());
+    qDebug("Conway: Done linking shaders");
 
-	std::generate_n(std::back_inserter(pos_mass),
-		            particle_count,
-		            [prng = std::default_random_engine(),
-		             x_dist = uni(-x_abs_range, x_abs_range),
-		             y_dist = uni(-y_abs_range, y_abs_range),
-		             z_dist = uni(-z_abs_range, z_abs_range),
-		             m_dist = uni(mass_min, mass_max)]() mutable
-	{
-		return real4{ x_dist(prng),
-			          y_dist(prng),
-			          z_dist(prng),
-			          m_dist(prng) };
-	});
+    // Init device memory
+    qDebug("Conway: Initializing OpenGL buffers...");
 
-	// Create shaders
-	qDebug("NBody: Building shaders...");
-	if (!vs->compileSourceFile( (shader_location + "/Vertex.glsl").c_str())) qWarning("%s", vs->log().data());
-	if (!fs->compileSourceFile( (shader_location + "/Fragment.glsl").c_str())) qWarning("%s", fs->log().data());
-	qDebug("NBody: Done building shaders");
+    std::vector<float> quad =
+        //  vertices  , tex coords
+        //  x  ,   y  ,  x  ,   y
+        { -1.0f, -1.0f, 0.0f, 0.0f,
+          -1.0f,  1.0f, 0.0f, 1.0f,
+           1.0f,  1.0f, 1.0f, 1.0f,
+           1.0f, -1.0f, 1.0f, 0.0f,
+          -1.0f, -1.0f, 0.0f, 0.0f };
 
-	// Create and link shaderprogram
-	qDebug("NBody: Linking shaders...");
-	if (!sp->addShader(vs.get())) qWarning("NBody: Could not add vertex shader to shader program");
-	if (!sp->addShader(fs.get())) qWarning("NBody: Could not add fragment shader to shader program");
-	if (!sp->link()) qWarning("%s", sp->log().data());
-	qDebug("NBody: Done linking shaders");
+    if (!vbo->create()) qWarning("Conway: Could not create VBO");
+    if (!vbo->bind()) qWarning("Conway: Could not bind VBO");
+    vbo->setUsagePattern(QOpenGLBuffer::StaticDraw);
+    vbo->allocate(quad.data(), (int)quad.size() * sizeof(float));
+    vbo->release();
 
-	// Init device memory
-	qDebug("NBody: Initializing OpenGL buffers...");
+    qDebug("Conway: Done initializing OpenGL buffers");
 
-	for (auto& vbo : vbos)
-	{
-		if (!vbo->create()) qWarning("QGripper: Could not create VBO");
-		if (!vbo->bind()) qWarning("QGripper: Could not bind VBO");
-		vbo->setUsagePattern(QOpenGLBuffer::StaticDraw);
-		vbo->allocate((int)pos_mass.size() * sizeof(real4));
-		vbo->write(0, pos_mass.data(), (int)pos_mass.size() * sizeof(real4));
-		vbo->release();
-	}
-    pos_mass.clear();
+    // Setup VAO for the VBO
+    if (!vao->create()) qWarning("Conway: Could not create VAO");
 
-	qDebug("NBody: Done initializing OpenGL buffers");
+    vao->bind();
+    {
+        if (!vbo->bind()) qWarning("Conway: Could not bind VBO");
 
-	// Setup VAOs for the VBOs
-	std::transform(vbos.begin(), vbos.end(), vaos.begin(), [this](std::unique_ptr<QOpenGLBuffer>& vbo)
-	{
-		auto vao = std::make_unique<QOpenGLVertexArrayObject>(this);
-        if (!vao->create()) qWarning("QGripper: Could not create VAO");
+        // Setup shader attributes (can only be done when a VBO is bound, VAO does not store shader state
+        if (!sp->bind()) qWarning("Conway: Failed to bind shaderprogram");
+        sp->enableAttributeArray(0);  checkGLerror();
+        sp->enableAttributeArray(1);  checkGLerror();
+        sp->setAttributeArray(0, GL_FLOAT, (GLvoid *)(NULL), 2, sizeof(cl::sycl::float4));                      checkGLerror();
+        sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 2 * sizeof(float)), 2, sizeof(cl::sycl::float4));  checkGLerror();
+        sp->release(); checkGLerror();
+    }
+    vao->release();;
 
-		vao->bind();
-        {
-            if (!vbo->bind()) qWarning("QGripper: Could not bind VBO");
+    std::vector<cl::sycl::uint4> texels;
+    std::generate_n(std::back_inserter(texels),
+                    width() * height(),
+                    [prng = std::default_random_engine{},
+                     dist = std::uniform_int_distribution<cl::sycl::uint4::element_type>{ 0, 1 }]() mutable
+    {
+        return cl::sycl::uint4{ 1, 1, 1, dist(prng) };
+    });
 
-            // Setup shader attributes (can only be done when a VBO is bound, VAO does not store shader state
-            if (!sp->bind()) qWarning("QGripper: Failed to bind shaderprogram");
-            sp->enableAttributeArray(0);  checkGLerror();
-            sp->enableAttributeArray(1);  checkGLerror();
-            sp->setAttributeArray(0, GL_FLOAT, (GLvoid *)(NULL), 3, sizeof(real4));                     checkGLerror();
-            sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 3 * sizeof(real)), 1, sizeof(real4));  checkGLerror();
-            sp->release(); checkGLerror();
-        }
-		vao->release();
+    for (auto& tex : texs)
+    {
+        if (!tex->create()) qWarning("Failed to create texture");
+        tex->bind();
+        tex->setFormat(QOpenGLTexture::TextureFormat::RGBA8U);
+        tex->setMinificationFilter(QOpenGLTexture::Filter::Nearest);
+        tex->setMagnificationFilter(QOpenGLTexture::Filter::Nearest);
+        tex->setWrapMode(QOpenGLTexture::WrapMode::Repeat);
+        tex->setMipMaxLevel(0);
+        tex->setSize(width(), height());
+        tex->setData(QOpenGLTexture::PixelFormat::RGBA, QOpenGLTexture::PixelType::UInt32, texels.data());
+    }
 
-		return std::move(vao);
-	});
-
-	qDebug("NBody: Leaving initializeGL");
+    qDebug("Conway: Leaving initializeGL");
 }
 
 // Override unimplemented InteropWindow function
-void NBody::initializeCL()
+void Conway::initializeCL()
 {
-	qDebug("NBody: Entering initializeCL");
+    qDebug("Conway: Entering initializeCL");
 
-    // Create OpenCL Buffers
-    std::transform(vbos.cbegin(), vbos.cend(), CL_posBuffs.begin(), [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
+    // Translate OpenGL handles to OpenCL
+    std::transform(texs.cbegin(), texs.cend(), CL_latticeImages.begin(), [this](const std::unique_ptr<QOpenGLTexture>& tex)
     {
-        return cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() };
+        return cl::ImageGL{ CLcontext(), CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, vbo->bufferId() };
     });
 
-    for (auto& CL_velBuff : CL_velBuffs) CL_velBuff = cl::Buffer{ CLcontext(), CL_MEM_READ_WRITE, particle_count * sizeof(real4) };
-
+    // Translate OpenCL handles to SYCL
     context = cl::sycl::context{ CLcontext()() };
     device = cl::sycl::device{ CLdevices().at(dev_id)() };
     compute_queue = cl::sycl::queue{ CLcommandqueues().at(dev_id)(), context };
 
-	qDebug("NBody: Querying device capabilities");
-    auto extensions = device.get_info<cl::sycl::info::device::extensions>();
-	cl_khr_gl_event_supported = std::find(extensions.cbegin(), extensions.cend(), "cl_khr_gl_event") != extensions.cend();
-
-    std::transform(CL_velBuffs.cbegin(), CL_velBuffs.cend(), velBuffs.begin(), [this](const cl::Buffer& buff)
+    std::transform(CL_latticeImages.cbegin(), CL_latticeImages.cend(), latticeImages.begin(), [this](const cl::ImageGL& image)
     {
-        auto result = std::make_unique<cl::sycl::buffer<real4>>(buff(), compute_queue);
-
-        auto access = result->get_access<cl::sycl::access::mode::discard_write>();
-
-        std::fill_n(access.get_pointer(), access.get_count(), real4{ 0, 0, 0, 0 });
-
-        return result;
+        return std::make_unique<cl::sycl::image<2>>(image(), context);
     });
 
-	std::transform(CL_posBuffs.cbegin(), CL_posBuffs.cend(), posBuffs.begin(), [this](const cl::BufferGL& buff)
-	{
-        return std::make_unique<cl::sycl::buffer<real4>>(buff(), compute_queue);
-	});
+    qDebug("Conway: Querying device capabilities");
+    auto extensions = device.get_info<cl::sycl::info::device::extensions>();
+    cl_khr_gl_event_supported = std::find(extensions.cbegin(), extensions.cend(), "cl_khr_gl_event") != extensions.cend();
 
-	// Init bloat vars
-    std::copy(CL_posBuffs.cbegin(), CL_posBuffs.cend(), std::back_inserter(interop_resources));
+    // Init bloat vars
+    std::copy(CL_latticeImages.cbegin(), CL_latticeImages.cend(), std::back_inserter(interop_resources));
 
-	qDebug("NBody: Leaving initializeCL");
-}
-
-
-template <typename T, std::size_t J>
-struct unroll_step
-{
-    unroll_step(std::size_t i, T&& t)
-    {
-        unroll_step<T, J - 1>(i, std::forward<T>(t));
-        t(i + J);
-    }
-};
-
-template <typename T>
-struct unroll_step<T, (std::size_t)0>
-{
-    unroll_step(std::size_t i, T&& t) { t(i); }
-};
-
-template <std::size_t N, typename T>
-void unroll_loop(std::size_t first, std::size_t last, T&& t)
-{
-    std::size_t i = first;
-
-    for (; i + N < last; i += N)
-        unroll_step<T, N - 1>(i, std::forward<T>(t));
-
-    for (; i < last; ++i)
-        t(i);
+    qDebug("Conway: Leaving initializeCL");
 }
 
 
 // Override unimplemented InteropWindow function
-void NBody::updateScene()
+void Conway::updateScene()
 {
     // NOTE 1: When cl_khr_gl_event is NOT supported, then clFinish() is the only portable
     //         sync method and hence that will be called.
@@ -213,49 +160,37 @@ void NBody::updateScene()
 
     compute_queue.submit([&](cl::sycl::handler& cgh)
     {
-        auto old_pos_mass = posBuffs[DoubleBuffer::Front]->get_access<cl::sycl::access::mode::read>(cgh);
-        auto new_pos_mass = posBuffs[DoubleBuffer::Back]->get_access<cl::sycl::access::mode::write>(cgh);
-        auto old_vel = velBuffs[DoubleBuffer::Front]->get_access<cl::sycl::access::mode::read>(cgh);
-        auto new_vel = velBuffs[DoubleBuffer::Back]->get_access<cl::sycl::access::mode::write>(cgh);
-
-        cgh.parallel_for<kernels::NBodyStep>(cl::sycl::range<1>{ particle_count },
-                                             [=, count = particle_count](const cl::sycl::item<1> item)
+        auto old_lattice = latticeImages[Buffer::Front]->get_access<cl::sycl::uint4, cl::sycl::access::mode::read>(cgh);
+        auto new_lattice = latticeImages[Buffer::Back]->get_access<cl::sycl::uint4, cl::sycl::access::mode::write>(cgh);
+        
+        cgh.parallel_for<kernels::ConwayStep>(cl::sycl::range<2>{ old_lattice.get_range() },
+                                              [=](const cl::sycl::item<2> item)
         {
-            auto xyz = [](real4 vec) { return real3{ vec.x(), vec.y(), vec.z() }; };// { return vec.swizzle<0, 1, 2>(); };
-            auto distance = [](const real3 vec)
-            {
-                return cl::sycl::sqrt((real)1 + vec.x() * vec.x() + vec.y() * vec.y() + vec.z() * vec.z());
-            };
+            using namespace cl::sycl;
+            using elem_type = cl::sycl::uint4::element_type;
 
-            real4 my_pos_mass = old_pos_mass[item];
-            real3 pos = xyz(my_pos_mass);
-            real mass = my_pos_mass.w();
-            real dt = real(0.005f);
+            sampler sampler(coordinate_normalization_mode::unnormalized,
+                            addressing_mode::repeat,
+                            filtering_mode::nearest);
 
-            real3 acc = { 0, 0, 0 };
-            auto interact = [&](const size_t i)
-            {
-                real4 temp_pos_mass = old_pos_mass[i];
-                real3 temp_pos = xyz(temp_pos_mass);
-                real temp_mass = temp_pos_mass.w();
+            auto old = [=](cl::sycl::id<2> id) { return old_lattice.read(id.operator cl::sycl::int2(), sampler).a(); };
 
-                real3 r = temp_pos - pos;
+            auto id = item.get_id();
 
-                real invDist = (real)1 / distance(r);
-                real s = temp_mass * (invDist * invDist * invDist);
+            std::array<elem_type, 8> neighbours =
+                { old(id + id<2>(-1,+1)), old(id + id<2>(0,+1)), old(id + id<2>(+1,+1)),
+                  old(id + id<2>(-1,0)),                         old(id + id<2>(+1,0)),
+                  old(id + id<2>(-1,-1)), old(id + id<2>(0,-1)), old(id + id<2>(+1,-1))
+                };
+            elem_type self = old(id);
 
-                acc += s * r;
-            };
-            unroll_loop<4>(0, count, interact);
+            auto count = std::count(neighbours.cbegin(), neighbours.cend(), 1);
 
-            // updated position and velocity
-            real3 oldVel = xyz(old_vel[item]);
-            real3 newVel = oldVel + acc * dt;
-            real3 new_pos = pos + oldVel * dt + acc * real(0.5f) * dt * dt;
+            auto val = self ?
+                (count < 2 || count > 3 ? 0 : 1) :
+                (count == 3 ? 1 : 0);
 
-            // write to global memory
-            new_pos_mass[item] = real4{ new_pos.x(), new_pos.y(), new_pos.z(), mass };
-            new_vel[item] = real4{ newVel.x(), newVel.y(), newVel.z(), 1 };
+            new_lattice.write(id.operator cl::sycl::int2(), cl::sycl::uint4{ 1, 1, 1, val });
         });
     });
 
@@ -268,17 +203,14 @@ void NBody::updateScene()
         release.wait();
     
     // Swap front and back buffer handles
-    std::swap(vaos[Front], vaos[Back]);
-    std::swap(posBuffs[Front], posBuffs[Back]);
-    std::swap(velBuffs[Front], velBuffs[Back]);
-    std::swap(CL_posBuffs[Front], CL_posBuffs[Back]);
-    std::swap(CL_velBuffs[Front], CL_velBuffs[Back]);
+    std::swap(CL_latticeImages[Front], CL_latticeImages[Back]);
+    std::swap(latticeImages[Front], latticeImages[Back]);
     
     imageDrawn = false;
 }
 
 // Override unimplemented InteropWindow function
-void NBody::render()
+void Conway::render()
 {
     // Update matrices as needed
     if(needMatrixReset) setMatrices();
@@ -288,11 +220,11 @@ void NBody::render()
 
     // Draw
     if(!sp->bind()) qWarning("QGripper: Failed to bind shaderprogram");
-    vaos[Back]->bind(); checkGLerror();
+    vao->bind(); checkGLerror();
 
-    glFuncs->glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(particle_count)); checkGLerror();
+    glFuncs->glDrawArrays(GL_TRIANGLE_FAN, 0, static_cast<GLsizei>(5)); checkGLerror();
 
-    vaos[Back]->release(); checkGLerror();
+    vao->release(); checkGLerror();
     sp->release(); checkGLerror();
 
     // Wait for all drawing commands to finish
@@ -308,7 +240,7 @@ void NBody::render()
 }
 
 // Override unimplemented InteropWindow function
-void NBody::render(QPainter* painter)
+void Conway::render(QPainter* painter)
 {
     QString text("QGripper: ");
     text.append("IPS = ");
@@ -327,7 +259,7 @@ void NBody::render(QPainter* painter)
 }
 
 // Override InteropWindow function
-void NBody::resizeGL(QResizeEvent* event_in)
+void Conway::resizeGL(QResizeEvent* event_in)
 {
     glFuncs->glViewport(0, 0, event_in->size().width(), event_in->size().height());
     checkGLerror();
@@ -336,31 +268,13 @@ void NBody::resizeGL(QResizeEvent* event_in)
 }
 
 // Override InteropWindow function
-bool NBody::event(QEvent *event_in)
+bool Conway::event(QEvent *event_in)
 {
-    QMouseEvent* mouse_event;
-    QWheelEvent* wheel_event;
     QKeyEvent* keyboard_event;
 
     // Process messages arriving from application
     switch (event_in->type())
     {
-    case QEvent::MouseMove:
-        mouse_event = static_cast<QMouseEvent*>(event_in);
-
-        if((mouse_event->buttons() & Qt::MouseButton::RightButton) && // If RMB is pressed AND
-           (mousePos != mouse_event->pos()))                          // Mouse has moved 
-            mouseDrag(mouse_event);
-
-        mousePos = mouse_event->pos();
-        return true;
-
-    case QEvent::Wheel:
-        wheel_event = static_cast<QWheelEvent*>(event_in);
-
-        mouseWheel(wheel_event);
-        return true;
-
     case QEvent::KeyPress:
         keyboard_event = static_cast<QKeyEvent*>(event_in);
 
@@ -373,72 +287,29 @@ bool NBody::event(QEvent *event_in)
     }
 }
 
-// Input handler function
-void NBody::mouseDrag(QMouseEvent* event_in)
-{
-    phi += (event_in->x() - mousePos.x());
-	theta += (event_in->y() - mousePos.y());
-    
-    needMatrixReset = true;
-    
-    if(!getAnimating()) renderNow();
-}
-
-// Input handler function
-void NBody::mouseWheel(QWheelEvent* event_in)
-{
-    QPoint numPixels = event_in->pixelDelta();
-    QPoint numDegrees = event_in->angleDelta() / 4;
-
-    if (!numPixels.isNull())
-    {
-        dist += (float)sqrt(pow((double)x_abs_range,2)+pow((double)y_abs_range,2)) * 1.1f * numPixels.y() * (-0.02f);
-        dist = abs(dist);
-
-        needMatrixReset = true;
-    }
-    else if (!numDegrees.isNull())
-    {
-        QPoint numSteps = numDegrees / 15;
-        dist += (float)sqrt(pow((double)x_abs_range,2)+pow((double)y_abs_range,2)) * 1.1f * numSteps.y() * (-0.02f);
-        dist = abs(dist);
-
-        needMatrixReset = true;
-    }
-
-    if(!getAnimating()) renderNow();
-}
-
 // Helper function
-void NBody::setMatrices()
+void Conway::setMatrices()
 {
-    // Set shader variables
-    const float fov = 45.f;
-    const float max_range = std::max({ x_abs_range,
-                                       y_abs_range ,
-                                       z_abs_range });
-
     // Set camera to view the origo from the z-axis with up along the y-axis
     // and distance so the entire sim space is visible with given field-of-view
     QVector3D vecTarget{ 0, 0, 0 };
     QVector3D vecUp{ 0, 1, 0 };
-    QVector3D vecEye = vecTarget + QVector3D{ 0, 0, dist };
+    QVector3D vecEye = vecTarget + QVector3D{ 0, 0, 1 };
 
     QMatrix4x4 matWorld; // Identity
-    matWorld.rotate(theta, { 2, 0, 0 }); // theta rotates around z-axis
-    matWorld.rotate(phi,   { 0, 0, 2 }); // theta rotates around x-axis
 
     QMatrix4x4 matView; // Identity
     matView.lookAt(vecEye, vecTarget, vecUp);
 
     QMatrix4x4 matProj; // Identity
-    matProj.perspective(fov,
-                        static_cast<float>(this->width()) / this->height(),
-                        std::numeric_limits<float>::epsilon(),
-                        std::numeric_limits<float>::max());
+    matProj.ortho(-0.5f * width(),
+                  +0.5f * width(),
+                  -0.5f * height(),
+                  +0.5f * height(),
+                  std::numeric_limits<float>::epsilon(),
+                  std::numeric_limits<float>::max());
 
     sp->bind();
     sp->setUniformValue("mat_MVP", matProj * matView * matWorld);
-    sp->setUniformValue("mat_M", matWorld);
     sp->release();
 }

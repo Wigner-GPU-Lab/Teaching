@@ -60,19 +60,15 @@ private:
 
     std::size_t dev_id;
 
-    // Host-side containers
-    std::vector<real4> pos_mass;
-    std::vector<real4> velocity;
-
     // OpenGL related variables
     std::unique_ptr<QOpenGLShader> vs, fs;
     std::unique_ptr<QOpenGLShaderProgram> sp;
-    std::array<std::unique_ptr<QOpenGLBuffer>, 2> vbos;
-    std::array<std::unique_ptr<QOpenGLVertexArrayObject>, 2> vaos;
+    std::unique_ptr<QOpenGLBuffer> vbo;
+    std::unique_ptr<QOpenGLVertexArrayObject> vao;
+    std::array<std::unique_ptr<QOpenGLTexture>, 2> texs;
 
-	// OpenCL related variables
-    std::array<cl::BufferGL, 2> CL_posBuffs;
-    std::array<cl::Buffer, 2> CL_velBuffs;
+    // OpenCL related variables
+    std::array<cl::ImageGL, 2> CL_latticeImages;
     std::vector<cl::Memory> interop_resources;  // Bloat
     bool cl_khr_gl_event_supported;
 
@@ -81,17 +77,10 @@ private:
     cl::sycl::device device;                // Device
     cl::sycl::queue compute_queue;          // CommandQueue
 
-	std::array<std::unique_ptr<cl::sycl::buffer<real4>>, 2> posBuffs;   // Simulation data buffers
-	std::array<std::unique_ptr<cl::sycl::buffer<real4>>, 2> velBuffs;   // Simulation data buffers
+    std::array<std::unique_ptr<cl::sycl::image<2>>, 2> latticeImages;   // Simulation data images
 
-	bool rightMouseButtonPressed;           // Variables to enable dragging
-	QPoint mousePos;                        // Variables to enable dragging
-    float dist, phi, theta;                 // Mouse polar coordinates
     bool imageDrawn;                        // Whether image has been drawn since last iteration
-	bool needMatrixReset;                   // Whether matrices need to be reset in shaders
+    bool needMatrixReset;                   // Whether matrices need to be reset in shaders
 
-	void mouseDrag(QMouseEvent* event_in);  // Handle mouse dragging
-	void mouseWheel(QWheelEvent* event_in); // Handle mouse wheel movement
-
-	void setMatrices();                     // Update shader matrices
+    void setMatrices();                     // Update shader matrices
 };

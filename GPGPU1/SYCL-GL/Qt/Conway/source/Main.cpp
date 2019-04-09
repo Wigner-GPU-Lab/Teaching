@@ -59,14 +59,14 @@ int main(int argc, char *argv[])
         count = parser.value("particles").toULong();
     }
 
-    NBody nbody(plat_id, dev_type, count);
-    nbody.setVisibility(QWindow::Maximized);
-    //nbody.setVisibility(QWindow::AutomaticVisibility);
-    //nbody.setWidth(1280);
-    //nbody.setHeight(720);
-    nbody.setMaxFPS(60);
-    //nbody.setMaxIPS(60);
-    nbody.setAnimating(true);
+    Conway conway(plat_id, dev_type);
+    conway.setVisibility(QWindow::Maximized);
+    //conway.setVisibility(QWindow::AutomaticVisibility);
+    //conway.setWidth(1280);
+    //conway.setHeight(720);
+    conway.setMaxFPS(60);
+    //conway.setMaxIPS(60);
+    conway.setAnimating(true);
 
     // Qt5 constructs
     QSurfaceFormat my_surfaceformat;
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
     my_surfaceformat.setStencilBufferSize(8);
     my_surfaceformat.setStereo(false);
 
-    nbody.setFormat(my_surfaceformat);
+    conway.setFormat(my_surfaceformat);
 
     return app.exec();
 }
