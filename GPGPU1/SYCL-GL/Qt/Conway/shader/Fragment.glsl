@@ -1,21 +1,25 @@
 #version 330
 
 // VS locations
-#define POSITION	0
-#define COLOR		1
+#define POSITION    0
+#define TEXCOORD    1
 
 // FS locations
-#define FRAG_COLOR	0
+#define COORDINATE 0
 
 in block
 {
-	float Color;
+    vec2 TexCoord;
 } FS_In;
 
 out vec4 FragColor;
 
-void main()
-{	
-    FragColor = vec4(1.0f,FS_In.Color,1.0f,1.0f);
-}
+uniform sampler2D texsampler;
 
+void main()
+{
+    //FragColor = vec4(FS_In.TexCoord, 0.0, 1.0);
+    //FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    
+    FragColor = texture(texsampler, FS_In.TexCoord);
+}

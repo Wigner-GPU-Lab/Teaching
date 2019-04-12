@@ -11,19 +11,21 @@ Conway::Conway(std::size_t plat_id,
 {
 }
 
-
 // Override unimplemented InteropWindow function
 void Conway::initializeGL()
 {
     qDebug("Conway: Entering initializeGL");
+    std::unique_ptr<QOpenGLDebugLogger> log(new QOpenGLDebugLogger(this));
+    if (!log->initialize()) qWarning("Conway: QDebugLogger failed to initialize");
+
     // Initialize OpenGL resources
     vs = std::make_unique<QOpenGLShader>(QOpenGLShader::Vertex, this);
     fs = std::make_unique<QOpenGLShader>(QOpenGLShader::Fragment, this);
     sp = std::make_unique<QOpenGLShaderProgram>(this);
     vbo = std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::VertexBuffer);
     vao = std::make_unique<QOpenGLVertexArrayObject>(this);
-    texs = { std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target::Target2D),
-             std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target::Target2D) };
+    texs = { std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target::TargetRectangle),
+             std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target::TargetRectangle) };
 
     // Initialize frame buffer
     glFuncs->glViewport(0, 0, width(), height());   checkGLerror();
@@ -49,17 +51,16 @@ void Conway::initializeGL()
 
     std::vector<float> quad =
         //  vertices  , tex coords
-        //  x  ,   y  ,  x  ,   y
+        //  x  ,   y  ,  u  ,   v
         { -1.0f, -1.0f, 0.0f, 0.0f,
           -1.0f,  1.0f, 0.0f, 1.0f,
-           1.0f,  1.0f, 1.0f, 1.0f,
            1.0f, -1.0f, 1.0f, 0.0f,
-          -1.0f, -1.0f, 0.0f, 0.0f };
+           1.0f,  1.0f, 1.0f, 1.0f };
 
     if (!vbo->create()) qWarning("Conway: Could not create VBO");
     if (!vbo->bind()) qWarning("Conway: Could not bind VBO");
-    vbo->setUsagePattern(QOpenGLBuffer::StaticDraw);
-    vbo->allocate(quad.data(), (int)quad.size() * sizeof(float));
+    vbo->setUsagePattern(QOpenGLBuffer::StaticDraw);                checkGLerror();
+    vbo->allocate(quad.data(), (int)quad.size() * sizeof(float));   checkGLerror();
     vbo->release();
 
     qDebug("Conway: Done initializing OpenGL buffers");
@@ -77,9 +78,9 @@ void Conway::initializeGL()
         sp->enableAttributeArray(1);  checkGLerror();
         sp->setAttributeArray(0, GL_FLOAT, (GLvoid *)(NULL), 2, sizeof(cl::sycl::float4));                      checkGLerror();
         sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 2 * sizeof(float)), 2, sizeof(cl::sycl::float4));  checkGLerror();
-        sp->release(); checkGLerror();
+        sp->release();
     }
-    vao->release();;
+    vao->release();
 
     std::vector<cl::sycl::uint4> texels;
     std::generate_n(std::back_inserter(texels),
@@ -87,23 +88,34 @@ void Conway::initializeGL()
                     [prng = std::default_random_engine{},
                      dist = std::uniform_int_distribution<cl::sycl::uint4::element_type>{ 0, 1 }]() mutable
     {
-        return cl::sycl::uint4{ 1, 1, 1, dist(prng) };
+        return cl::sycl::uint4{ 1, 1, 1, 1/*dist(prng)*/ };
     });
+
+    // Quote from the QOpenGLTexture documentation of Qt 5.12
+    //
+    // The typical usage pattern for QOpenGLTexture is:
+    //  -  Instantiate the object specifying the texture target type
+    //  -  Set properties that affect the storage requirements e.g.storage format, dimensions
+    //  -  Allocate the server - side storage
+    //  -  Optionally upload pixel data
+    //  -  Optionally set any additional properties e.g.filtering and border options
+    //  -  Render with texture or render to texture
 
     for (auto& tex : texs)
     {
-        if (!tex->create()) qWarning("Failed to create texture");
-        tex->bind();
-        tex->setFormat(QOpenGLTexture::TextureFormat::RGBA8U);
+        tex->setSize(width(), height());
+        tex->setFormat(QOpenGLTexture::TextureFormat::RGBA32U);
+        tex->allocateStorage(QOpenGLTexture::PixelFormat::RGBA_Integer, QOpenGLTexture::PixelType::UInt32);
+        tex->setData(QOpenGLTexture::PixelFormat::RGBA_Integer, QOpenGLTexture::PixelType::UInt32, texels.data());
         tex->setMinificationFilter(QOpenGLTexture::Filter::Nearest);
         tex->setMagnificationFilter(QOpenGLTexture::Filter::Nearest);
         tex->setWrapMode(QOpenGLTexture::WrapMode::Repeat);
         tex->setMipMaxLevel(0);
-        tex->setSize(width(), height());
-        tex->setData(QOpenGLTexture::PixelFormat::RGBA, QOpenGLTexture::PixelType::UInt32, texels.data());
     }
 
-    qDebug("Conway: Leaving initializeGL");
+    for (const QOpenGLDebugMessage& message : log->loggedMessages()) qDebug() << message << "\n";
+
+     qDebug("Conway: Leaving initializeGL");
 }
 
 // Override unimplemented InteropWindow function
@@ -112,27 +124,27 @@ void Conway::initializeCL()
     qDebug("Conway: Entering initializeCL");
 
     // Translate OpenGL handles to OpenCL
-    std::transform(texs.cbegin(), texs.cend(), CL_latticeImages.begin(), [this](const std::unique_ptr<QOpenGLTexture>& tex)
-    {
-        return cl::ImageGL{ CLcontext(), CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, vbo->bufferId() };
-    });
+    //std::transform(texs.cbegin(), texs.cend(), CL_latticeImages.begin(), [this](const std::unique_ptr<QOpenGLTexture>& tex)
+    //{
+    //    return cl::ImageGL{ CLcontext(), CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, tex->textureId() };
+    //});
 
     // Translate OpenCL handles to SYCL
     context = cl::sycl::context{ CLcontext()() };
     device = cl::sycl::device{ CLdevices().at(dev_id)() };
     compute_queue = cl::sycl::queue{ CLcommandqueues().at(dev_id)(), context };
 
-    std::transform(CL_latticeImages.cbegin(), CL_latticeImages.cend(), latticeImages.begin(), [this](const cl::ImageGL& image)
-    {
-        return std::make_unique<cl::sycl::image<2>>(image(), context);
-    });
+    //std::transform(CL_latticeImages.cbegin(), CL_latticeImages.cend(), latticeImages.begin(), [this](const cl::ImageGL& image)
+    //{
+    //    return std::make_unique<cl::sycl::image<2>>(image(), context);
+    //});
 
     qDebug("Conway: Querying device capabilities");
     auto extensions = device.get_info<cl::sycl::info::device::extensions>();
     cl_khr_gl_event_supported = std::find(extensions.cbegin(), extensions.cend(), "cl_khr_gl_event") != extensions.cend();
 
     // Init bloat vars
-    std::copy(CL_latticeImages.cbegin(), CL_latticeImages.cend(), std::back_inserter(interop_resources));
+    //std::copy(CL_latticeImages.cbegin(), CL_latticeImages.cend(), std::back_inserter(interop_resources));
 
     qDebug("Conway: Leaving initializeCL");
 }
@@ -152,59 +164,59 @@ void Conway::updateScene()
     //           will not execute until the release is complete.
     //         
     //           See: opencl-1.2-extensions.pdf (Rev. 15. Chapter 9.8.5)
-
-    cl::Event acquire, release;
-
-    CLcommandqueues().at(dev_id).enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire);
-    acquire.wait(); cl::finish();
-
-    compute_queue.submit([&](cl::sycl::handler& cgh)
-    {
-        auto old_lattice = latticeImages[Buffer::Front]->get_access<cl::sycl::uint4, cl::sycl::access::mode::read>(cgh);
-        auto new_lattice = latticeImages[Buffer::Back]->get_access<cl::sycl::uint4, cl::sycl::access::mode::write>(cgh);
-        
-        cgh.parallel_for<kernels::ConwayStep>(cl::sycl::range<2>{ old_lattice.get_range() },
-                                              [=](const cl::sycl::item<2> item)
-        {
-            using namespace cl::sycl;
-            using elem_type = cl::sycl::uint4::element_type;
-
-            sampler sampler(coordinate_normalization_mode::unnormalized,
-                            addressing_mode::repeat,
-                            filtering_mode::nearest);
-
-            auto old = [=](cl::sycl::id<2> id) { return old_lattice.read(id.operator cl::sycl::int2(), sampler).a(); };
-
-            auto id = item.get_id();
-
-            std::array<elem_type, 8> neighbours =
-                { old(id + id<2>(-1,+1)), old(id + id<2>(0,+1)), old(id + id<2>(+1,+1)),
-                  old(id + id<2>(-1,0)),                         old(id + id<2>(+1,0)),
-                  old(id + id<2>(-1,-1)), old(id + id<2>(0,-1)), old(id + id<2>(+1,-1))
-                };
-            elem_type self = old(id);
-
-            auto count = std::count(neighbours.cbegin(), neighbours.cend(), 1);
-
-            auto val = self ?
-                (count < 2 || count > 3 ? 0 : 1) :
-                (count == 3 ? 1 : 0);
-
-            new_lattice.write(id.operator cl::sycl::int2(), cl::sycl::uint4{ 1, 1, 1, val });
-        });
-    });
-
-    CLcommandqueues().at(dev_id).enqueueReleaseGLObjects(&interop_resources, nullptr, &release);
-
-    // Wait for all OpenCL commands to finish
-    if (!cl_khr_gl_event_supported)
-        cl::finish();
-    else
-        release.wait();
+//
+//    cl::Event acquire, release;
+//
+//    CLcommandqueues().at(dev_id).enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire);
+//    acquire.wait(); cl::finish();
+//
+//    compute_queue.submit([&](cl::sycl::handler& cgh)
+//    {
+//        auto old_lattice = latticeImages[Buffer::Front]->get_access<cl::sycl::uint4, cl::sycl::access::mode::read>(cgh);
+//        auto new_lattice = latticeImages[Buffer::Back]->get_access<cl::sycl::uint4, cl::sycl::access::mode::write>(cgh);
+//        
+//        cgh.parallel_for<kernels::ConwayStep>(cl::sycl::range<2>{ old_lattice.get_range() },
+//                                              [=](const cl::sycl::item<2> item)
+//        {
+//            using namespace cl::sycl;
+//            using elem_type = cl::sycl::uint4::element_type;
+//
+//            sampler sampler(coordinate_normalization_mode::unnormalized,
+//                            addressing_mode::repeat,
+//                            filtering_mode::nearest);
+//
+//            auto old = [=](cl::sycl::id<2> id) { return old_lattice.read(id.operator cl::sycl::int2(), sampler).a(); };
+//
+//            auto id = item.get_id();
+//
+//            std::array<elem_type, 8> neighbours =
+//                { old(id + id<2>(-1,+1)), old(id + id<2>(0,+1)), old(id + id<2>(+1,+1)),
+//                  old(id + id<2>(-1,0)),                         old(id + id<2>(+1,0)),
+//                  old(id + id<2>(-1,-1)), old(id + id<2>(0,-1)), old(id + id<2>(+1,-1))
+//                };
+//            elem_type self = old(id);
+//
+//            auto count = std::count(neighbours.cbegin(), neighbours.cend(), 1);
+//
+//            auto val = self ?
+//                (count < 2 || count > 3 ? 0 : 1) :
+//                (count == 3 ? 1 : 0);
+//
+//            new_lattice.write(id.operator cl::sycl::int2(), cl::sycl::uint4{ 1, 1, 1, val });
+//        });
+//    });
+//
+//    CLcommandqueues().at(dev_id).enqueueReleaseGLObjects(&interop_resources, nullptr, &release);
+//
+//    // Wait for all OpenCL commands to finish
+//    if (!cl_khr_gl_event_supported)
+//        cl::finish();
+//    else
+//        release.wait();
     
-    // Swap front and back buffer handles
-    std::swap(CL_latticeImages[Front], CL_latticeImages[Back]);
-    std::swap(latticeImages[Front], latticeImages[Back]);
+//    // Swap front and back buffer handles
+//    std::swap(CL_latticeImages[Front], CL_latticeImages[Back]);
+//    std::swap(latticeImages[Front], latticeImages[Back]);
     
     imageDrawn = false;
 }
@@ -212,6 +224,9 @@ void Conway::updateScene()
 // Override unimplemented InteropWindow function
 void Conway::render()
 {
+    std::unique_ptr<QOpenGLDebugLogger> log(new QOpenGLDebugLogger(this));
+    if (!log->initialize()) qWarning("Conway: QDebugLogger failed to initialize");
+
     // Update matrices as needed
     if(needMatrixReset) setMatrices();
 
@@ -222,8 +237,13 @@ void Conway::render()
     if(!sp->bind()) qWarning("QGripper: Failed to bind shaderprogram");
     vao->bind(); checkGLerror();
 
-    glFuncs->glDrawArrays(GL_TRIANGLE_FAN, 0, static_cast<GLsizei>(5)); checkGLerror();
+    //glFuncs->glActiveTexture(GL_TEXTURE0);
+    //texs[Buffer::Front]->bind();
+    sp->setUniformValue("texsampler", texs[Buffer::Front]->textureId());
 
+    glFuncs->glDrawArrays(GL_TRIANGLE_STRIP, 0, static_cast<GLsizei>(4)); checkGLerror();
+
+    texs[Buffer::Front]->release();
     vao->release(); checkGLerror();
     sp->release(); checkGLerror();
 
@@ -237,6 +257,8 @@ void Conway::render()
         glFuncs->glFlush(); checkGLerror();
     }
     imageDrawn = true;
+
+    for (const QOpenGLDebugMessage& message : log->loggedMessages()) qDebug() << message << "\n";
 }
 
 // Override unimplemented InteropWindow function
@@ -302,10 +324,8 @@ void Conway::setMatrices()
     matView.lookAt(vecEye, vecTarget, vecUp);
 
     QMatrix4x4 matProj; // Identity
-    matProj.ortho(-0.5f * width(),
-                  +0.5f * width(),
-                  -0.5f * height(),
-                  +0.5f * height(),
+    matProj.ortho(width(), width(),
+                  height(), height(),
                   std::numeric_limits<float>::epsilon(),
                   std::numeric_limits<float>::max());
 
