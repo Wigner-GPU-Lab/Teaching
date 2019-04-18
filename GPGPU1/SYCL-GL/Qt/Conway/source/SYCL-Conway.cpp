@@ -147,14 +147,22 @@ void Conway::initializeCL()
         }
     };
 
-    context = cl::sycl::context{ CLcontext()(), async_error_handler };
-    device = cl::sycl::device{ CLdevices().at(dev_id)() };
-    compute_queue = cl::sycl::queue{ CLcommandqueues().at(dev_id)(), context };
-
-    std::transform(CL_latticeImages.cbegin(), CL_latticeImages.cend(), latticeImages.begin(), [this](const cl::ImageGL& image)
+    try
     {
-        return std::make_unique<cl::sycl::image<2>>(image(), context);
-    });
+        context = cl::sycl::context{ CLcontext()(), async_error_handler };
+        device = cl::sycl::device{ CLdevices().at(dev_id)() };
+        compute_queue = cl::sycl::queue{ CLcommandqueues().at(dev_id)(), context };
+
+        std::transform(CL_latticeImages.cbegin(), CL_latticeImages.cend(), latticeImages.begin(), [this](const cl::ImageGL & image)
+        {
+            return std::make_unique<cl::sycl::image<2>>(image(), context);
+        });
+    }
+    catch(cl::sycl::exception e)
+    {
+        qDebug() << e.what();
+        std::exit(e.get_cl_code());
+    }
 
     qDebug("Conway: Querying device capabilities");
     auto extensions = device.get_info<cl::sycl::info::device::extensions>();
@@ -224,6 +232,11 @@ void Conway::updateScene()
                 new_lattice.write((cl::sycl::int2)id, cl::sycl::float4{ val, val, val, 1.f });
             });
         });
+    }
+    catch (cl::sycl::compile_program_error e)
+    {
+        qDebug() << e.what();
+        std::exit(e.get_cl_code());
     }
     catch (cl::sycl::exception e)
     {
