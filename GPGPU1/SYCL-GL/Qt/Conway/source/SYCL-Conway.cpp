@@ -104,39 +104,13 @@ void Conway::initializeGL()
     //  -  Render with texture or render to texture
 
     for (auto& tex : texs)
-    //auto& tex = texs[0];
     {
         tex->setSize(width(), height());
         tex->setFormat(QOpenGLTexture::TextureFormat::RGBA32F);
         tex->allocateStorage(QOpenGLTexture::PixelFormat::RGBA, QOpenGLTexture::PixelType::Float32);
         tex->setData(QOpenGLTexture::PixelFormat::RGBA, QOpenGLTexture::PixelType::Float32, texels.data());
         tex->generateMipMaps();
-        //tex->setMinificationFilter(QOpenGLTexture::Filter::Nearest);
-        //tex->setMagnificationFilter(QOpenGLTexture::Filter::Nearest);
-        //tex->setWrapMode(QOpenGLTexture::WrapMode::Repeat);
-        //tex->generateMipMaps();
-        //tex->mipLevels();
     }
-
-    // works
-    //std::vector<std::uint8_t> TEXels(width() * height() * 4, 128);
-    //glFuncs->glGenTextures(1, &TEX);
-    //glFuncs->glBindTexture(GL_TEXTURE_2D, TEX);
-    //glFuncs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width(), height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, TEXels.data());
-    //glFuncs->glGenerateMipmap(GL_TEXTURE_2D);
-
-    // doesn't
-    //std::vector<std::uint32_t> TEXels(width()* height() * 4, 128);
-    //glFuncs->glGenTextures(1, &TEX);
-    //glFuncs->glBindTexture(GL_TEXTURE_2D, TEX);
-    //glFuncs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, width(), height(), 0, GL_RGBA_INTEGER, GL_UNSIGNED_INT, TEXels.data());
-    //glFuncs->glGenerateMipmap(GL_TEXTURE_2D);
-
-    //std::vector<float> TEXels(width()* height() * 4, std::numeric_limits<std::uint32_t>::max() / 2);
-    //glFuncs->glGenTextures(1, &TEX);
-    //glFuncs->glBindTexture(GL_TEXTURE_2D, TEX);
-    //glFuncs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, width(), height(), 0, GL_RGBA_INTEGER, GL_UNSIGNED_INT, TEXels.data());
-    //glFuncs->glGenerateMipmap(GL_TEXTURE_2D);
 
     for (const QOpenGLDebugMessage& message : log->loggedMessages()) qDebug() << message << "\n";
 
@@ -149,27 +123,45 @@ void Conway::initializeCL()
     qDebug("Conway: Entering initializeCL");
 
     // Translate OpenGL handles to OpenCL
-    //std::transform(texs.cbegin(), texs.cend(), CL_latticeImages.begin(), [this](const std::unique_ptr<QOpenGLTexture>& tex)
-    //{
-    //    return cl::ImageGL{ CLcontext(), CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, tex->textureId() };
-    //});
+    std::transform(texs.cbegin(), texs.cend(), CL_latticeImages.begin(), [this](const std::unique_ptr<QOpenGLTexture>& tex)
+    {
+        return cl::ImageGL{ CLcontext(), CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, tex->textureId() };
+    });
 
     // Translate OpenCL handles to SYCL
-    context = cl::sycl::context{ CLcontext()() };
+    auto async_error_handler = [](cl::sycl::exception_list errors)
+    {
+        for (auto error : errors)
+        {
+            try { std::rethrow_exception(error); }
+            catch (cl::sycl::exception e)
+            {
+                qDebug() << e.what();
+                std::exit(e.get_cl_code());
+            }
+            catch (std::exception e)
+            {
+                qDebug() << e.what();
+                std::exit(EXIT_FAILURE);
+            }
+        }
+    };
+
+    context = cl::sycl::context{ CLcontext()(), async_error_handler };
     device = cl::sycl::device{ CLdevices().at(dev_id)() };
     compute_queue = cl::sycl::queue{ CLcommandqueues().at(dev_id)(), context };
 
-    //std::transform(CL_latticeImages.cbegin(), CL_latticeImages.cend(), latticeImages.begin(), [this](const cl::ImageGL& image)
-    //{
-    //    return std::make_unique<cl::sycl::image<2>>(image(), context);
-    //});
+    std::transform(CL_latticeImages.cbegin(), CL_latticeImages.cend(), latticeImages.begin(), [this](const cl::ImageGL& image)
+    {
+        return std::make_unique<cl::sycl::image<2>>(image(), context);
+    });
 
     qDebug("Conway: Querying device capabilities");
     auto extensions = device.get_info<cl::sycl::info::device::extensions>();
     cl_khr_gl_event_supported = std::find(extensions.cbegin(), extensions.cend(), "cl_khr_gl_event") != extensions.cend();
 
     // Init bloat vars
-    //std::copy(CL_latticeImages.cbegin(), CL_latticeImages.cend(), std::back_inserter(interop_resources));
+    std::copy(CL_latticeImages.cbegin(), CL_latticeImages.cend(), std::back_inserter(interop_resources));
 
     qDebug("Conway: Leaving initializeCL");
 }
@@ -190,60 +182,73 @@ void Conway::updateScene()
     //         
     //           See: opencl-1.2-extensions.pdf (Rev. 15. Chapter 9.8.5)
 
-//    cl::Event acquire, release;
-//
-//    CLcommandqueues().at(dev_id).enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire);
-//    acquire.wait(); cl::finish();
-//
-//    compute_queue.submit([&](cl::sycl::handler& cgh)
-//    {
-//        auto old_lattice = latticeImages[Buffer::Front]->get_access<cl::sycl::char2, cl::sycl::access::mode::read>(cgh);
-//        auto new_lattice = latticeImages[Buffer::Back]->get_access<cl::sycl::uint4, cl::sycl::access::mode::write>(cgh);
-//        
-//        cgh.parallel_for<kernels::ConwayStep>(cl::sycl::range<2>{ old_lattice.get_range() },
-//                                              [=](const cl::sycl::item<2> item)
-//        {
-//            using namespace cl::sycl;
-//            using elem_type = cl::sycl::uint4::element_type;
-//
-//            sampler sampler(coordinate_normalization_mode::unnormalized,
-//                            addressing_mode::repeat,
-//                            filtering_mode::nearest);
-//
-//            auto old = [=](cl::sycl::id<2> id) { return old_lattice.read(id.operator cl::sycl::int2(), sampler).a(); };
-//
-//            auto id = item.get_id();
-//
-//            std::array<elem_type, 8> neighbours =
-//                { old(id + id<2>(-1,+1)), old(id + id<2>(0,+1)), old(id + id<2>(+1,+1)),
-//                  old(id + id<2>(-1,0)),                         old(id + id<2>(+1,0)),
-//                  old(id + id<2>(-1,-1)), old(id + id<2>(0,-1)), old(id + id<2>(+1,-1))
-//                };
-//            elem_type self = old(id);
-//
-//            auto count = std::count(neighbours.cbegin(), neighbours.cend(), 1);
-//
-//            auto val = self ?
-//                (count < 2 || count > 3 ? 0 : 1) :
-//                (count == 3 ? 1 : 0);
-//
-//            new_lattice.write(id.operator cl::sycl::int2(), cl::sycl::uint4{ 1, 1, 1, val });
-//        });
-//    });
-//
-//    CLcommandqueues().at(dev_id).enqueueReleaseGLObjects(&interop_resources, nullptr, &release);
-//
-//    // Wait for all OpenCL commands to finish
-//    if (!cl_khr_gl_event_supported)
-//        cl::finish();
-//    else
-//        release.wait();
-//  
-//    // Swap front and back buffer handles
-//    std::swap(CL_latticeImages[Front], CL_latticeImages[Back]);
-//    std::swap(latticeImages[Front], latticeImages[Back]);
-//    
-//    imageDrawn = false;
+    cl::Event acquire, release;
+
+    CLcommandqueues().at(dev_id).enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire);
+    acquire.wait(); cl::finish();
+
+    try
+    {
+        compute_queue.submit([&](cl::sycl::handler& cgh)
+        {
+            auto old_lattice = latticeImages[Buffer::Front]->get_access<cl::sycl::float4, cl::sycl::access::mode::read>(cgh);
+            auto new_lattice = latticeImages[Buffer::Back]->get_access<cl::sycl::float4, cl::sycl::access::mode::write>(cgh);
+            
+            cgh.parallel_for<kernels::ConwayStep>(cl::sycl::range<2>{ old_lattice.get_range() },
+                                                  [=](const cl::sycl::item<2> item)
+            {
+                using namespace cl::sycl;
+                using elem_type = cl::sycl::float4::element_type;
+        
+                sampler sampler(coordinate_normalization_mode::unnormalized,
+                                addressing_mode::repeat,
+                                filtering_mode::nearest);
+        
+                auto old = [=](cl::sycl::id<2> id) { return old_lattice.read((cl::sycl::int2)id, sampler).r(); };
+        
+                auto id = item.get_id();
+        
+                std::array<elem_type, 8> neighbours =
+                    { old(id + id<2>(-1,+1)), old(id + id<2>(0,+1)), old(id + id<2>(+1,+1)),
+                      old(id + id<2>(-1,0)),                         old(id + id<2>(+1,0)),
+                      old(id + id<2>(-1,-1)), old(id + id<2>(0,-1)), old(id + id<2>(+1,-1))
+                    };
+                elem_type self = old(id);
+        
+                auto count = std::count_if(neighbours.cbegin(), neighbours.cend(), [](const cl::sycl::cl_float val) { return val > 0.5f; });
+        
+                auto val = self > 0.5f ?
+                    (count < 2 || count > 3 ? 0.f : 1.f) :
+                    (count == 3 ? 1.f : 0.f);
+        
+                new_lattice.write((cl::sycl::int2)id, cl::sycl::float4{ val, val, val, 1.f });
+            });
+        });
+    }
+    catch (cl::sycl::exception e)
+    {
+        qDebug() << e.what();
+        std::exit(e.get_cl_code());
+    }
+    catch (std::exception e)
+    {
+        qDebug() << e.what();
+        std::exit(EXIT_FAILURE);
+    }
+
+    CLcommandqueues().at(dev_id).enqueueReleaseGLObjects(&interop_resources, nullptr, &release);
+
+    // Wait for all OpenCL commands to finish
+    if (!cl_khr_gl_event_supported)
+        cl::finish();
+    else
+        release.wait();
+  
+    // Swap front and back buffer handles
+    std::swap(CL_latticeImages[Front], CL_latticeImages[Back]);
+    std::swap(latticeImages[Front], latticeImages[Back]);
+    
+    imageDrawn = false;
 }
 
 // Override unimplemented InteropWindow function
@@ -262,18 +267,11 @@ void Conway::render()
     if(!sp->bind()) qWarning("QGripper: Failed to bind shaderprogram");
     vao->bind(); checkGLerror();
 
-    //GLint max_texs;
-    //glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &max_texs);
-    //
-    //glFuncs->glActiveTexture(GL_TEXTURE0);
-    texs[Buffer::Back]->bind();
-    //sp->setUniformValue("texsampler", 0/*texs[Buffer::Front]->textureId()*/);
-
-    //glFuncs->glBindTexture(GL_TEXTURE_2D, TEX);
+    texs[Buffer::Front]->bind();
 
     glFuncs->glDrawArrays(GL_TRIANGLE_STRIP, 0, static_cast<GLsizei>(4)); checkGLerror();
 
-    texs[Buffer::Back]->release();
+    texs[Buffer::Front]->release();
     vao->release(); checkGLerror();
     sp->release(); checkGLerror();
 
