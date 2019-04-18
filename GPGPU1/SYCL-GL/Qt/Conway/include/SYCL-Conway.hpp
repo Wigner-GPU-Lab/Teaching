@@ -66,6 +66,7 @@ private:
     std::unique_ptr<QOpenGLBuffer> vbo;
     std::unique_ptr<QOpenGLVertexArrayObject> vao;
     std::array<std::unique_ptr<QOpenGLTexture>, 2> texs;
+    GLuint TEX;
 
     // OpenCL related variables
     std::array<cl::ImageGL, 2> CL_latticeImages;

@@ -24,8 +24,8 @@ void Conway::initializeGL()
     sp = std::make_unique<QOpenGLShaderProgram>(this);
     vbo = std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::VertexBuffer);
     vao = std::make_unique<QOpenGLVertexArrayObject>(this);
-    texs = { std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target::TargetRectangle),
-             std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target::TargetRectangle) };
+    texs = { std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target::Target2D),
+             std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target::Target2D) };
 
     // Initialize frame buffer
     glFuncs->glViewport(0, 0, width(), height());   checkGLerror();
@@ -82,13 +82,15 @@ void Conway::initializeGL()
     }
     vao->release();
 
-    std::vector<cl::sycl::uint4> texels;
+    //std::vector<std::array<float, 4>> texels(width() * height(), {0.5f, 0.5f, 0.5f, 1.f});
+    std::vector<std::array<float, 4>> texels;
     std::generate_n(std::back_inserter(texels),
                     width() * height(),
                     [prng = std::default_random_engine{},
-                     dist = std::uniform_int_distribution<cl::sycl::uint4::element_type>{ 0, 1 }]() mutable
+                     dist = std::uniform_int_distribution<std::uint32_t>{ 0, 1 }]() mutable
     {
-        return cl::sycl::uint4{ 1, 1, 1, 1/*dist(prng)*/ };
+        auto rand = dist(prng);
+        return std::array<float, 4>{ (float)rand, (float)rand, (float)rand, 0.f };
     });
 
     // Quote from the QOpenGLTexture documentation of Qt 5.12
@@ -102,16 +104,39 @@ void Conway::initializeGL()
     //  -  Render with texture or render to texture
 
     for (auto& tex : texs)
+    //auto& tex = texs[0];
     {
         tex->setSize(width(), height());
-        tex->setFormat(QOpenGLTexture::TextureFormat::RGBA32U);
-        tex->allocateStorage(QOpenGLTexture::PixelFormat::RGBA_Integer, QOpenGLTexture::PixelType::UInt32);
-        tex->setData(QOpenGLTexture::PixelFormat::RGBA_Integer, QOpenGLTexture::PixelType::UInt32, texels.data());
-        tex->setMinificationFilter(QOpenGLTexture::Filter::Nearest);
-        tex->setMagnificationFilter(QOpenGLTexture::Filter::Nearest);
-        tex->setWrapMode(QOpenGLTexture::WrapMode::Repeat);
-        tex->setMipMaxLevel(0);
+        tex->setFormat(QOpenGLTexture::TextureFormat::RGBA32F);
+        tex->allocateStorage(QOpenGLTexture::PixelFormat::RGBA, QOpenGLTexture::PixelType::Float32);
+        tex->setData(QOpenGLTexture::PixelFormat::RGBA, QOpenGLTexture::PixelType::Float32, texels.data());
+        tex->generateMipMaps();
+        //tex->setMinificationFilter(QOpenGLTexture::Filter::Nearest);
+        //tex->setMagnificationFilter(QOpenGLTexture::Filter::Nearest);
+        //tex->setWrapMode(QOpenGLTexture::WrapMode::Repeat);
+        //tex->generateMipMaps();
+        //tex->mipLevels();
     }
+
+    // works
+    //std::vector<std::uint8_t> TEXels(width() * height() * 4, 128);
+    //glFuncs->glGenTextures(1, &TEX);
+    //glFuncs->glBindTexture(GL_TEXTURE_2D, TEX);
+    //glFuncs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width(), height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, TEXels.data());
+    //glFuncs->glGenerateMipmap(GL_TEXTURE_2D);
+
+    // doesn't
+    //std::vector<std::uint32_t> TEXels(width()* height() * 4, 128);
+    //glFuncs->glGenTextures(1, &TEX);
+    //glFuncs->glBindTexture(GL_TEXTURE_2D, TEX);
+    //glFuncs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, width(), height(), 0, GL_RGBA_INTEGER, GL_UNSIGNED_INT, TEXels.data());
+    //glFuncs->glGenerateMipmap(GL_TEXTURE_2D);
+
+    //std::vector<float> TEXels(width()* height() * 4, std::numeric_limits<std::uint32_t>::max() / 2);
+    //glFuncs->glGenTextures(1, &TEX);
+    //glFuncs->glBindTexture(GL_TEXTURE_2D, TEX);
+    //glFuncs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, width(), height(), 0, GL_RGBA_INTEGER, GL_UNSIGNED_INT, TEXels.data());
+    //glFuncs->glGenerateMipmap(GL_TEXTURE_2D);
 
     for (const QOpenGLDebugMessage& message : log->loggedMessages()) qDebug() << message << "\n";
 
@@ -164,7 +189,7 @@ void Conway::updateScene()
     //           will not execute until the release is complete.
     //         
     //           See: opencl-1.2-extensions.pdf (Rev. 15. Chapter 9.8.5)
-//
+
 //    cl::Event acquire, release;
 //
 //    CLcommandqueues().at(dev_id).enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire);
@@ -172,7 +197,7 @@ void Conway::updateScene()
 //
 //    compute_queue.submit([&](cl::sycl::handler& cgh)
 //    {
-//        auto old_lattice = latticeImages[Buffer::Front]->get_access<cl::sycl::uint4, cl::sycl::access::mode::read>(cgh);
+//        auto old_lattice = latticeImages[Buffer::Front]->get_access<cl::sycl::char2, cl::sycl::access::mode::read>(cgh);
 //        auto new_lattice = latticeImages[Buffer::Back]->get_access<cl::sycl::uint4, cl::sycl::access::mode::write>(cgh);
 //        
 //        cgh.parallel_for<kernels::ConwayStep>(cl::sycl::range<2>{ old_lattice.get_range() },
@@ -213,12 +238,12 @@ void Conway::updateScene()
 //        cl::finish();
 //    else
 //        release.wait();
-    
+//  
 //    // Swap front and back buffer handles
 //    std::swap(CL_latticeImages[Front], CL_latticeImages[Back]);
 //    std::swap(latticeImages[Front], latticeImages[Back]);
-    
-    imageDrawn = false;
+//    
+//    imageDrawn = false;
 }
 
 // Override unimplemented InteropWindow function
@@ -237,13 +262,18 @@ void Conway::render()
     if(!sp->bind()) qWarning("QGripper: Failed to bind shaderprogram");
     vao->bind(); checkGLerror();
 
+    //GLint max_texs;
+    //glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &max_texs);
+    //
     //glFuncs->glActiveTexture(GL_TEXTURE0);
-    //texs[Buffer::Front]->bind();
-    sp->setUniformValue("texsampler", texs[Buffer::Front]->textureId());
+    texs[Buffer::Back]->bind();
+    //sp->setUniformValue("texsampler", 0/*texs[Buffer::Front]->textureId()*/);
+
+    //glFuncs->glBindTexture(GL_TEXTURE_2D, TEX);
 
     glFuncs->glDrawArrays(GL_TRIANGLE_STRIP, 0, static_cast<GLsizei>(4)); checkGLerror();
 
-    texs[Buffer::Front]->release();
+    texs[Buffer::Back]->release();
     vao->release(); checkGLerror();
     sp->release(); checkGLerror();
 
