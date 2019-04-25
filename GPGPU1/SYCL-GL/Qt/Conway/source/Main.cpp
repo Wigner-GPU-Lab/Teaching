@@ -28,44 +28,34 @@ int main(int argc, char *argv[])
     parser.addHelpOption();
     parser.addVersionOption();
     parser.addOptions({
-        {{"d", "device"}, "Device type to use", "[cpu|gpu|acc]", "cpu"},
-        {{"p", "platformId"}, "The index of the platform to use", "unsigned integral", "0"},
-        {{"x", "particles"}, "Number of particles", "unsigned integral", "8192"}
+        {{"p", "platform"}, "The index of the platform to use", "unsigned integral", "0"},
+        {{"d", "device"}, "The index of the device to use", "unsigned integral", "0"},
+        {{"t", "type"}, "Device type to use", "[cpu|gpu|acc]", "cpu"}
     });
 
     parser.process(app);
 
     cl_bitfield dev_type = CL_DEVICE_TYPE_DEFAULT;
-    std::size_t plat_id = 0u, count = 8192u;
-    if(!parser.value("device").isEmpty())
+    std::size_t plat_id = 0u, dev_id = 0u;
+
+    if (!parser.value("platform").isEmpty()) plat_id = parser.value("platform").toULong();
+    if (!parser.value("device").isEmpty()) dev_id = parser.value("device").toULong();
+    if(!parser.value("type").isEmpty())
     {
-        if(parser.value("device") == "cpu")
+        if(parser.value("type") == "cpu")
             dev_type = CL_DEVICE_TYPE_CPU;
-        else if(parser.value("device") == "gpu")
+        else if(parser.value("type") == "gpu")
             dev_type = CL_DEVICE_TYPE_GPU;
-        else if(parser.value("device") == "acc")
+        else if(parser.value("type") == "acc")
             dev_type = CL_DEVICE_TYPE_ACCELERATOR;
         else
         {
             qFatal("SYCL-Conway: Invalid device type: valid values are [cpu|gpu|acc]. Using CL_DEVICE_TYPE_DEFAULT instead.");
         }
     }
-    if(!parser.value("platformId").isEmpty())
-    {
-        plat_id = parser.value("platformId").toULong();
-    }
-    if(!parser.value("particles").isEmpty())
-    {
-        count = parser.value("particles").toULong();
-    }
 
-    Conway conway(plat_id, dev_type);
+    Conway conway(plat_id, dev_id, dev_type);
     conway.setVisibility(QWindow::Maximized);
-    //conway.setVisibility(QWindow::AutomaticVisibility);
-    //conway.setWidth(1280);
-    //conway.setHeight(720);
-    conway.setMaxFPS(60);
-    //conway.setMaxIPS(60);
     conway.setAnimating(true);
 
     // Qt5 constructs

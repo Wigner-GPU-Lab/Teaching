@@ -37,8 +37,9 @@ class Conway : public InteropWindow
 
 public:
 
-    explicit Conway(std::size_t plat_id,
-                    cl_bitfield dev_type,
+    explicit Conway(std::size_t plat,
+                    std::size_t dev,
+                    cl_bitfield type,
                     QWindow *parent = 0);
     ~Conway() = default;
 
@@ -66,7 +67,6 @@ private:
     std::unique_ptr<QOpenGLBuffer> vbo;
     std::unique_ptr<QOpenGLVertexArrayObject> vao;
     std::array<std::unique_ptr<QOpenGLTexture>, 2> texs;
-    GLuint TEX;
 
     // OpenCL related variables
     std::array<cl::ImageGL, 2> CL_latticeImages;
