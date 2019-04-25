@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     parser.addOptions({
         {{"p", "platform"}, "The index of the platform to use", "unsigned integral", "0"},
         {{"d", "device"}, "The index of the device to use", "unsigned integral", "0"},
-        {{"t", "type"}, "Device type to use", "[cpu|gpu|acc]", "cpu"}
+        {{"t", "type"}, "Device type to use", "[cpu|gpu|acc]", "def"}
     });
 
     parser.process(app);

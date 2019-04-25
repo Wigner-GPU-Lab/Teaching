@@ -18,56 +18,46 @@ int main(int argc, char *argv[])
     parser.addHelpOption();
     parser.addVersionOption();
     parser.addOptions({
-        {{"d", "device"}, "Device type to use", "[cpu|gpu|acc]", "cpu"},
-        {{"p", "platformId"}, "The index of the platform to use", "unsigned integral", "0"},
+        {{"p", "platform"}, "The index of the platform to use", "unsigned integral", "0"},
+        {{"d", "device"}, "The index of the device to use", "unsigned integral", "0"},
+        {{"t", "type"}, "Device type to use", "[cpu|gpu|acc]", "def"},
         {{"x", "particles"}, "Number of particles", "unsigned integral", "8192"}
     });
 
     parser.process(app);
 
-    cl_bitfield dev_type;
-    std::size_t plat_id, count;
-	if(!parser.value("device").isEmpty())
+    cl_bitfield dev_type = CL_DEVICE_TYPE_DEFAULT;
+    std::size_t plat_id = 0u, dev_id = 0u, count = 8192u;
+
+    if (!parser.value("platform").isEmpty()) plat_id = parser.value("platform").toULong();
+    if (!parser.value("device").isEmpty()) dev_id = parser.value("device").toULong();
+    if(!parser.value("type").isEmpty())
     {
-        if(parser.value("device") == "cpu")
+        if(parser.value("type") == "cpu")
             dev_type = CL_DEVICE_TYPE_CPU;
-        else if(parser.value("device") == "gpu")
+        else if(parser.value("type") == "gpu")
             dev_type = CL_DEVICE_TYPE_GPU;
-        else if(parser.value("device") == "acc")
+        else if(parser.value("type") == "acc")
             dev_type = CL_DEVICE_TYPE_ACCELERATOR;
         else
         {
             qFatal("NBody: Invalid device type: valid values are [cpu|gpu|acc]. Using CL_DEVICE_TYPE_DEFAULT instead.");
         }
     }
-    else dev_type = CL_DEVICE_TYPE_DEFAULT;
-    if(!parser.value("platformId").isEmpty())
-    {
-        plat_id = parser.value("platformId").toULong();
-    }
-    else plat_id = 0;
-    if(!parser.value("particles").isEmpty())
-    {
-        count = parser.value("particles").toULong();
-    }
-    else count = 8192u;
+    if(!parser.value("particles").isEmpty()) count = parser.value("particles").toULong();
 
-    NBody nbody(plat_id, dev_type, count);
+    NBody nbody(plat_id, dev_id, dev_type, count);
     nbody.setVisibility(QWindow::Maximized);
-    //nbody.setVisibility(QWindow::AutomaticVisibility);
-    //nbody.setWidth(1280);
-    //nbody.setHeight(720);
-    nbody.setMaxFPS(60);
-    //nbody.setMaxIPS(60);
-	nbody.setAnimating(true);
+    nbody.setAnimating(true);
 
     // Qt5 constructs
     QSurfaceFormat my_surfaceformat;
-    
+
     // Setup desired format
     my_surfaceformat.setRenderableType(QSurfaceFormat::RenderableType::OpenGL);
     my_surfaceformat.setProfile(QSurfaceFormat::OpenGLContextProfile::CoreProfile);
     my_surfaceformat.setSwapBehavior(QSurfaceFormat::SwapBehavior::DoubleBuffer);
+    my_surfaceformat.setOption(QSurfaceFormat::DebugContext);
     my_surfaceformat.setMajorVersion(3);
     my_surfaceformat.setMinorVersion(3);
     my_surfaceformat.setRedBufferSize(8);
@@ -78,7 +68,7 @@ int main(int argc, char *argv[])
     my_surfaceformat.setStencilBufferSize(8);
     my_surfaceformat.setStereo(false);
 
-	nbody.setFormat(my_surfaceformat);
+    nbody.setFormat(my_surfaceformat);
 
     return app.exec();
 }

@@ -1,18 +1,19 @@
 #include <NBody.hpp>
 
 
-NBody::NBody(std::size_t plat_id,
-	         cl_bitfield dev_type,
-	         std::size_t particle_count,
-	         QWindow *parent)
-    : InteropWindow(plat_id, dev_type, parent)
-	, particle_count(particle_count)
-	, x_abs_range(192.f)
-	, y_abs_range(128.f)
-	, z_abs_range(32.f)
-	, mass_min(100.f)
-	, mass_max(500.f)
-	, dev_id(0)
+NBody::NBody(std::size_t plat,
+             std::size_t dev,
+             cl_bitfield type,
+             std::size_t particle_count,
+             QWindow *parent)
+    : InteropWindow(plat, type, parent)
+    , particle_count(particle_count)
+    , x_abs_range(192.f)
+    , y_abs_range(128.f)
+    , z_abs_range(32.f)
+    , mass_min(100.f)
+    , mass_max(500.f)
+    , dev_id(dev)
     , dist(3 * std::max({ x_abs_range,
                           y_abs_range ,
                           z_abs_range }))
@@ -27,81 +28,81 @@ NBody::NBody(std::size_t plat_id,
 // Override unimplemented InteropWindow function
 void NBody::initializeGL()
 {
-	qDebug("NBody: Entering initializeGL");
-	// Initialize OpenGL resources
-	vs = std::make_unique<QOpenGLShader>(QOpenGLShader::Vertex, this);
-	fs = std::make_unique<QOpenGLShader>(QOpenGLShader::Fragment, this);
-	sp = std::make_unique<QOpenGLShaderProgram>(this);
-	vbos = { std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::VertexBuffer),
-		     std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::VertexBuffer) };
-	vaos = { std::make_unique<QOpenGLVertexArrayObject>(this),
-		     std::make_unique<QOpenGLVertexArrayObject>(this) };
+    qDebug("NBody: Entering initializeGL");
+    // Initialize OpenGL resources
+    vs = std::make_unique<QOpenGLShader>(QOpenGLShader::Vertex, this);
+    fs = std::make_unique<QOpenGLShader>(QOpenGLShader::Fragment, this);
+    sp = std::make_unique<QOpenGLShaderProgram>(this);
+    vbos = { std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::VertexBuffer),
+             std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::VertexBuffer) };
+    vaos = { std::make_unique<QOpenGLVertexArrayObject>(this),
+             std::make_unique<QOpenGLVertexArrayObject>(this) };
 
-	// Initialize frame buffer
-	glFuncs->glViewport(0, 0, width(), height());   checkGLerror();
-	glFuncs->glClearColor(0.0, 0.0, 0.0, 1.0);      checkGLerror();
-	glFuncs->glDisable(GL_DEPTH_TEST);               checkGLerror();
-	glFuncs->glDisable(GL_CULL_FACE);               checkGLerror();
+    // Initialize frame buffer
+    glFuncs->glViewport(0, 0, width(), height());   checkGLerror();
+    glFuncs->glClearColor(0.0, 0.0, 0.0, 1.0);      checkGLerror();
+    glFuncs->glDisable(GL_DEPTH_TEST);               checkGLerror();
+    glFuncs->glDisable(GL_CULL_FACE);               checkGLerror();
 
-	// Initialize simulation data
-	qDebug("NBody: Allocating host-side memory");
-	pos_mass.reserve(particle_count);
-	forces.reserve(particle_count);
+    // Initialize simulation data
+    qDebug("NBody: Allocating host-side memory");
+    pos_mass.reserve(particle_count);
+    forces.reserve(particle_count);
 
-	qDebug("NBody: Setting initial states");
-	using uni = std::uniform_real_distribution<real>;
+    qDebug("NBody: Setting initial states");
+    using uni = std::uniform_real_distribution<real>;
 
-	std::generate_n(std::back_inserter(pos_mass),
-		            particle_count,
-		            [prng = std::default_random_engine(),
-		             x_dist = uni(-x_abs_range, x_abs_range),
-		             y_dist = uni(-y_abs_range, y_abs_range),
-		             z_dist = uni(-z_abs_range, z_abs_range),
-		             m_dist = uni(mass_min, mass_max)]() mutable
-	{
-		return real4{ x_dist(prng),
-			          y_dist(prng),
-			          z_dist(prng),
-			          m_dist(prng) };
-	});
+    std::generate_n(std::back_inserter(pos_mass),
+                    particle_count,
+                    [prng = std::default_random_engine(),
+                     x_dist = uni(-x_abs_range, x_abs_range),
+                     y_dist = uni(-y_abs_range, y_abs_range),
+                     z_dist = uni(-z_abs_range, z_abs_range),
+                     m_dist = uni(mass_min, mass_max)]() mutable
+    {
+        return real4{ x_dist(prng),
+                      y_dist(prng),
+                      z_dist(prng),
+                      m_dist(prng) };
+    });
 
-	std::fill_n(std::back_inserter(velocity), particle_count, real4{ 0, 0, 0, 0 });
+    std::fill_n(std::back_inserter(velocity), particle_count, real4{ 0, 0, 0, 0 });
 
-	// Create shaders
-	qDebug("NBody: Building shaders...");
-	if (!vs->compileSourceFile( (shader_location + "/Vertex.glsl").c_str())) qWarning("%s", vs->log().data());
-	if (!fs->compileSourceFile( (shader_location + "/Fragment.glsl").c_str())) qWarning("%s", fs->log().data());
-	qDebug("NBody: Done building shaders");
+    // Create shaders
+    qDebug("NBody: Building shaders...");
+    if (!vs->compileSourceFile( (shader_location + "/Vertex.glsl").c_str())) qWarning("%s", vs->log().data());
+    if (!fs->compileSourceFile( (shader_location + "/Fragment.glsl").c_str())) qWarning("%s", fs->log().data());
+    qDebug("NBody: Done building shaders");
 
-	// Create and link shaderprogram
-	qDebug("NBody: Linking shaders...");
-	if (!sp->addShader(vs.get())) qWarning("NBody: Could not add vertex shader to shader program");
-	if (!sp->addShader(fs.get())) qWarning("NBody: Could not add fragment shader to shader program");
-	if (!sp->link()) qWarning("%s", sp->log().data());
-	qDebug("NBody: Done linking shaders");
+    // Create and link shaderprogram
+    qDebug("NBody: Linking shaders...");
+    if (!sp->addShader(vs.get())) qWarning("NBody: Could not add vertex shader to shader program");
+    if (!sp->addShader(fs.get())) qWarning("NBody: Could not add fragment shader to shader program");
+    if (!sp->link()) qWarning("%s", sp->log().data());
+    qDebug("NBody: Done linking shaders");
 
-	// Init device memory
-	qDebug("NBody: Initializing OpenGL buffers...");
+    // Init device memory
+    qDebug("NBody: Initializing OpenGL buffers...");
 
-	for (auto& vbo : vbos)
-	{
-		if (!vbo->create()) qWarning("QGripper: Could not create VBO");
-		if (!vbo->bind()) qWarning("QGripper: Could not bind VBO");
-		vbo->setUsagePattern(QOpenGLBuffer::StaticDraw);
-		vbo->allocate((int)pos_mass.size() * sizeof(real4));
-		vbo->write(0, pos_mass.data(), (int)pos_mass.size() * sizeof(real4));
-		vbo->release();
-	}
+    for (auto& vbo : vbos)
+    {
+        if (!vbo->create()) qWarning("QGripper: Could not create VBO");
+        if (!vbo->bind()) qWarning("QGripper: Could not bind VBO");
+        vbo->setUsagePattern(QOpenGLBuffer::StaticDraw);
+        vbo->allocate((int)pos_mass.size() * sizeof(real4));
+        vbo->write(0, pos_mass.data(), (int)pos_mass.size() * sizeof(real4));
+        vbo->release();
+    }
 
-	qDebug("NBody: Done initializing OpenGL buffers");
+    qDebug("NBody: Done initializing OpenGL buffers");
 
-	// Setup VAOs for the VBOs
-	std::transform(vbos.begin(), vbos.end(), vaos.begin(), [this](std::unique_ptr<QOpenGLBuffer>& vbo)
-	{
-		auto vao = std::make_unique<QOpenGLVertexArrayObject>(this);
+    // Setup VAOs for the VBOs
+    std::transform(vbos.begin(), vbos.end(), vaos.begin(), [this](std::unique_ptr<QOpenGLBuffer>& vbo)
+    {
+        auto vao = std::make_unique<QOpenGLVertexArrayObject>(this);
         if (!vao->create()) qWarning("QGripper: Could not create VAO");
 
-		vao->bind();
+        vao->bind();
         {
             if (!vbo->bind()) qWarning("QGripper: Could not bind VBO");
 
@@ -113,96 +114,96 @@ void NBody::initializeGL()
             sp->setAttributeArray(1, GL_FLOAT, (GLvoid *)(NULL + 3 * sizeof(real)), 1, sizeof(real4));  checkGLerror();
             sp->release(); checkGLerror();
         }
-		vao->release();
+        vao->release();
 
-		return std::move(vao);
-	});
+        return std::move(vao);
+    });
 
 
-	qDebug("NBody: Leaving initializeGL");
+    qDebug("NBody: Leaving initializeGL");
 }
 
 // Override unimplemented InteropWindow function
 void NBody::initializeCL()
 {
-	qDebug("NBody: Entering initializeCL");
+    qDebug("NBody: Entering initializeCL");
 
-	// Load, compile and initialize
-	qDebug("NBody: Loading kernel code");
-	std::ifstream kernel_stream{ kernel_location + "/Kernels.cl" };
-	if (!kernel_stream.is_open()) qWarning("NBody: Cannot open kernel/Kernels.cl");
+    // Load, compile and initialize
+    qDebug("NBody: Loading kernel code");
+    std::ifstream kernel_stream{ kernel_location + "/Kernels.cl" };
+    if (!kernel_stream.is_open()) qWarning("NBody: Cannot open kernel/Kernels.cl");
 
-	std::string kernel_string{ std::istreambuf_iterator<char>{kernel_stream}, std::istreambuf_iterator<char>{} };
+    std::string kernel_string{ std::istreambuf_iterator<char>{kernel_stream}, std::istreambuf_iterator<char>{} };
 
-	qDebug("NBody: Optimizing kernel");
-	// Define compile-time constants, compute domains and types.
-	std::stringstream compile_options;
+    qDebug("NBody: Optimizing kernel");
+    // Define compile-time constants, compute domains and types.
+    std::stringstream compile_options;
 
-	qDebug("NBody: Querying device capabilities");
-	if (sizeof(real) == 8)
-	{
-		bool fp64 = CLdevices().at(dev_id).getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp64", 0) != std::string::npos;
+    qDebug("NBody: Querying device capabilities");
+    if (sizeof(real) == 8)
+    {
+        bool fp64 = CLdevices().at(dev_id).getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp64", 0) != std::string::npos;
 
-		if (!fp64) qWarning("NBody: Selected device does not support double precision");
+        if (!fp64) qWarning("NBody: Selected device does not support double precision");
 
         compile_options << "-D USE_FP64 ";
 
-		compile_options << "-D real=" << "double ";
-		compile_options << "-D real4=" << "double4 ";
-	}
-	else
-	{
-		compile_options << "-cl-single-precision-constant" << " ";
+        compile_options << "-D real=" << "double ";
+        compile_options << "-D real4=" << "double4 ";
+    }
+    else
+    {
+        compile_options << "-cl-single-precision-constant" << " ";
 
-		compile_options << "-D real=" << "float ";
-		compile_options << "-D real4=" << "float4 ";
-	}
+        compile_options << "-D real=" << "float ";
+        compile_options << "-D real4=" << "float4 ";
+    }
 
     cl_khr_gl_event_supported = CLdevices().at(dev_id).getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_gl_event", 0) != std::string::npos;
 
-	qDebug("NBody: Building kernel");
-	qDebug((std::string("NBody: Build options are:") + compile_options.str()).c_str());
-	cl::Program prog{ CLcontext(), kernel_string };
+    qDebug("NBody: Building kernel");
+    qDebug((std::string("NBody: Build options are:") + compile_options.str()).c_str());
+    cl::Program prog{ CLcontext(), kernel_string };
 
-	try
-	{
-		prog.build({ CLdevices().at(dev_id) }, compile_options.str().c_str());
-	}
-	catch (cl::BuildError err)
-	{
-		qWarning((std::string{ "NBody: Build exception: " } + err.what()).c_str());
+    try
+    {
+        prog.build({ CLdevices().at(dev_id) }, compile_options.str().c_str());
+    }
+    catch (cl::BuildError err)
+    {
+        qWarning((std::string{ "NBody: Build exception: " } + err.what()).c_str());
 
-		for (const auto& log : err.getBuildLog())
-		{
-			qWarning((std::string{ "NBody: Device " } + log.first.getInfo<CL_DEVICE_NAME>() + " has build log:\n").c_str());
-			qWarning(log.second.c_str());
-		}
-	}
+        for (const auto& log : err.getBuildLog())
+        {
+            qWarning((std::string{ "NBody: Device " } + log.first.getInfo<CL_DEVICE_NAME>() + " has build log:\n").c_str());
+            qWarning(log.second.c_str());
+        }
+    }
 
-	step_kernel = cl::Kernel{ prog, "nbody_sim" };
+    step_kernel = cl::Kernel{ prog, "nbody_sim" };
 
-	gws = cl::NDRange{ particle_count };
-	lws = cl::NullRange;
+    gws = cl::NDRange{ particle_count };
+    lws = cl::NullRange;
 
-	// Create Buffers
-	qDebug("NBody: Creating OpenCL buffer objects");
-	for (auto& velBuff : velBuffs)
-		velBuff = cl::Buffer{ CLcontext(), velocity.begin(), velocity.end(), false };
+    // Create Buffers
+    qDebug("NBody: Creating OpenCL buffer objects");
+    for (auto& velBuff : velBuffs)
+        velBuff = cl::Buffer{ CLcontext(), velocity.begin(), velocity.end(), false };
 
-	std::transform(vbos.cbegin(), vbos.cend(), posBuffs.begin(), [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
-	{
-		return cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() };
-	});
+    std::transform(vbos.cbegin(), vbos.cend(), posBuffs.begin(), [this](const std::unique_ptr<QOpenGLBuffer>& vbo)
+    {
+        return cl::BufferGL{ CLcontext(), CL_MEM_READ_WRITE, vbo->bufferId() };
+    });
 
-	compute_queue = cl::CommandQueue{ CLcontext(), CLdevices().at(dev_id) };
+    compute_queue = cl::CommandQueue{ CLcontext(), CLdevices().at(dev_id) };
 
-	// Init bloat vars
-	std::transform(posBuffs.cbegin(), posBuffs.cend(), std::back_inserter(interop_resources), [](const cl::BufferGL& buf)
-	{
-		return cl::Memory{ buf };
-	});
+    // Init bloat vars
+    std::transform(posBuffs.cbegin(), posBuffs.cend(), std::back_inserter(interop_resources), [](const cl::BufferGL& buf)
+    {
+        return cl::Memory{ buf };
+    });
 
-	qDebug("NBody: Leaving initializeCL");
+    qDebug("NBody: Leaving initializeCL");
 }
 
 // Override unimplemented InteropWindow function
@@ -220,24 +221,22 @@ void NBody::updateScene()
     //         
     //           See: opencl-1.2-extensions.pdf (Rev. 15. Chapter 9.8.5)
 
-	compute_queue.enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire_release[0]);
+    compute_queue.enqueueAcquireGLObjects(&interop_resources, nullptr, &acquire_release[0]);
     
-	auto compute_event = kernel_functor{ step_kernel }(cl::EnqueueArgs{ compute_queue, gws },
-		                                               posBuffs[Front],
-		                                               posBuffs[Back],
-		                                               velBuffs[Front],
-		                                               velBuffs[Back],
-		                                               (cl_uint)particle_count,
-		                                               (real)0.005,
-		                                               (real)1.0);
+    auto compute_event = kernel_functor{ step_kernel }(cl::EnqueueArgs{ compute_queue, gws },
+                                                       posBuffs[Front],
+                                                       posBuffs[Back],
+                                                       velBuffs[Front],
+                                                       velBuffs[Back],
+                                                       (cl_uint)particle_count,
+                                                       (real)0.005,
+                                                       (real)1.0);
     
-	compute_queue.enqueueReleaseGLObjects(&interop_resources, nullptr, &acquire_release[1]);
+    compute_queue.enqueueReleaseGLObjects(&interop_resources, nullptr, &acquire_release[1]);
     
     // Wait for all OpenCL commands to finish
-    if (!cl_khr_gl_event_supported)
-        compute_queue.finish();
-    else
-        acquire_release[1].wait();
+    if (!cl_khr_gl_event_supported) cl::finish();
+    else acquire_release[1].wait();
     
     // Swap front and back buffer handles
     std::swap(vaos[Front], vaos[Back]);
@@ -285,15 +284,8 @@ void NBody::render(QPainter* painter)
     text.append(QString::number(getActIPS()));
     text.append(" | FPS = ");
     text.append(QString::number(getActFPS()));
-     
-    //painter->setBackgroundMode(Qt::TransparentMode);
-    //painter->setPen(Qt::white);
-    //painter->setFont(QFont("Arial", 30));
-    //painter->drawText(QRect(0, 0, 280, 50), Qt::AlignLeft, text);
-    
-    this->setTitle(text);
 
-    //Q_UNUSED(painter);
+    this->setTitle(text);
 }
 
 // Override InteropWindow function
@@ -349,7 +341,7 @@ void NBody::setParticleCount(std::size_t in) { particle_count = in; }
 void NBody::mouseDrag(QMouseEvent* event_in)
 {
     phi += (event_in->x() - mousePos.x());
-	theta += (event_in->y() - mousePos.y());
+    theta += (event_in->y() - mousePos.y());
     
     needMatrixReset = true;
     

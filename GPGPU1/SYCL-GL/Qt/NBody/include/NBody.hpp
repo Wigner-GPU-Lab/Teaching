@@ -46,11 +46,12 @@ class NBody : public InteropWindow
 
 public:
 
-    explicit NBody(std::size_t plat_id,
-	               cl_bitfield dev_type,
-	               std::size_t particle_count,
-	               QWindow *parent = 0);
-	~NBody() = default;
+    explicit NBody(std::size_t plat,
+                   std::size_t dev,
+                   cl_bitfield type,
+                   std::size_t particle_count,
+                   QWindow *parent = 0);
+    ~NBody() = default;
 
     virtual void initializeGL() override;
     virtual void initializeCL() override;
@@ -62,22 +63,22 @@ public:
 
 private:
 
-	enum Buffer
-	{
-		Front = 0,
-		Back = 1
-	};
+    enum Buffer
+    {
+        Front = 0,
+        Back = 1
+    };
 
-	// Simulation related variables
-	std::size_t particle_count;
-	real x_abs_range, y_abs_range, z_abs_range,
+    std::size_t dev_id;
+
+    // Simulation related variables
+    std::size_t particle_count;
+    real x_abs_range, y_abs_range, z_abs_range,
          mass_min, mass_max;
 
-	std::size_t dev_id;
-
-	// Host-side containers
-	std::vector<real4> pos_mass;
-	std::vector<real4> velocity;
+    // Host-side containers
+    std::vector<real4> pos_mass;
+    std::vector<real4> velocity;
 
     // OpenGL related variables
     std::unique_ptr<QOpenGLShader> vs, fs;
@@ -85,7 +86,7 @@ private:
     std::array<std::unique_ptr<QOpenGLBuffer>, 2> vbos;
     std::array<std::unique_ptr<QOpenGLVertexArrayObject>, 2> vaos;
 
-	// OpenCL related variables
+    // OpenCL related variables
     std::array<cl::BufferGL, 2> CL_posBuffs;
     std::array<cl::Buffer, 2> CL_velBuffs;
     std::vector<cl::Memory> interop_resources;  // Bloat
@@ -96,17 +97,17 @@ private:
     cl::sycl::device device;                // Device
     cl::sycl::queue compute_queue;          // CommandQueue
 
-	std::array<std::unique_ptr<cl::sycl::buffer<real4>>, 2> posBuffs;   // Simulation data buffers
-	std::array<std::unique_ptr<cl::sycl::buffer<real4>>, 2> velBuffs;   // Simulation data buffers
+    std::array<std::unique_ptr<cl::sycl::buffer<real4>>, 2> posBuffs;   // Simulation data buffers
+    std::array<std::unique_ptr<cl::sycl::buffer<real4>>, 2> velBuffs;   // Simulation data buffers
 
-	bool rightMouseButtonPressed;           // Variables to enable dragging
-	QPoint mousePos;                        // Variables to enable dragging
+    bool rightMouseButtonPressed;           // Variables to enable dragging
+    QPoint mousePos;                        // Variables to enable dragging
     float dist, phi, theta;                 // Mouse polar coordinates
     bool imageDrawn;                        // Whether image has been drawn since last iteration
-	bool needMatrixReset;                   // Whether matrices need to be reset in shaders
+    bool needMatrixReset;                   // Whether matrices need to be reset in shaders
 
-	void mouseDrag(QMouseEvent* event_in);  // Handle mouse dragging
-	void mouseWheel(QWheelEvent* event_in); // Handle mouse wheel movement
+    void mouseDrag(QMouseEvent* event_in);  // Handle mouse dragging
+    void mouseWheel(QWheelEvent* event_in); // Handle mouse wheel movement
 
-	void setMatrices();                     // Update shader matrices
+    void setMatrices();                     // Update shader matrices
 };
