@@ -87,8 +87,8 @@ void Conway::initializeGL()
     std::vector<std::array<float, 4>> texels;
     std::generate_n(std::back_inserter(texels),
                     width() * height(),
-                    [prng = std::default_random_engine{},
-                     dist = std::uniform_int_distribution<std::uint32_t>{ 0, 1 }]() mutable
+        [prng = std::ranlux48{ std::random_device{}() },
+         dist = std::uniform_int_distribution<std::uint32_t>{ 0, 1 }]() mutable
     {
         auto rand = dist(prng);
         return std::array<float, 4>{ (float)rand, (float)rand, (float)rand, 0.f };
@@ -214,7 +214,7 @@ void Conway::updateScene()
                                                   [=](const item<2> i)
             {
                 // Convert unnormalized floating coords offsetted by self to normalized uv
-                auto uv = [=, s = float2{ i.get_id()[0], i.get_id()[1] }](float2 in) { return (s + in) * d; };
+                auto uv = [=, s = float2{ i.get_id()[0], i.get_id()[1] }, d2 = d * 0.5f](float2 in) { return (s + in) * d + d2; };
 
                 auto old = [=](float2 in) { return old_lattice.read(uv(in), periodic).r() > 0.5f; };
                 auto next = [=](bool v) { new_lattice.write((int2)i.get_id(), float4{ v, v, v, 1.f }); };
