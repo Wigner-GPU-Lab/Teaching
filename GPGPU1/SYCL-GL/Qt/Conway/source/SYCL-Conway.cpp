@@ -298,7 +298,7 @@ void Conway::render()
 // Override unimplemented InteropWindow function
 void Conway::render(QPainter* painter)
 {
-    QString text("QGripper: ");
+    QString text("SYCL-Conway: ");
     text.append("IPS = ");
     text.append(QString::number(getActIPS()));
     text.append(" | FPS = ");
