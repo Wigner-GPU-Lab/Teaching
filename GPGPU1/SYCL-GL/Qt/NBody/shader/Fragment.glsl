@@ -2,14 +2,14 @@
 
 // VS locations
 #define POSITION    0
-#define TEXCOORD    1
+#define COLOR       1
 
 // FS locations
 #define FRAG_COLOR  0
 
 in block
 {
-    vec2 TexCoord;
+    float Color;
 } FS_In;
 
 out vec4 FragColor;
