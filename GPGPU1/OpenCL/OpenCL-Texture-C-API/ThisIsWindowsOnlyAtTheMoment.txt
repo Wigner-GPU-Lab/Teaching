@@ -1,3 +1,0 @@
-This sample only works on windows.
-
-One should replace the image I/O with libpng or libjpeg for portability, but this invokes a dependency...
