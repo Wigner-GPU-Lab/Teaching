@@ -10,5 +10,5 @@ project(CUDA-Enum
 )
 
 add_executable(${PROJECT_NAME}
-  EnumerateDevices.cu
+  saxpy_timed.cu
 )
