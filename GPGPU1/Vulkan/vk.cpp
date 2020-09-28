@@ -358,7 +358,7 @@ int main()
     shaderStageCreateInfo.pName = "main";
 
     VkPushConstantRange vpcr[1];
-    vpcr[0].stageFlags = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    vpcr[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT ;
     vpcr[0].offset = 0;
     vpcr[0].size = sizeof( float );
 
@@ -404,7 +404,7 @@ int main()
 
     vkCmdBindPipeline      (commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-    vkCmdPushConstants     (commandBuffer, pipelineLayout, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, sizeof(float), (void*)&factor );
+    vkCmdPushConstants     (commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT , 0, sizeof(float), (void*)&factor );
     vkCmdDispatch          (commandBuffer, N, 1, 1);
     err = vkEndCommandBuffer(commandBuffer);
     if(err != VK_SUCCESS){ std::cout << "Failed to end command buffer recording: " << err << "\n"; return -1; }
