@@ -1,0 +1,15 @@
+#version 450
+//layout( local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
+
+layout (std430, binding = 0) buffer data1_in { float data1[]; };
+layout (std430, binding = 1) buffer data2_in { float data2[]; };
+layout (std430, binding = 2) buffer data3_in { float data3[]; };
+
+layout( push_constant ) uniform factor_in { float factor; } Factor;
+
+void main()
+{
+	uint index = gl_GlobalInvocationID.x;
+	data3[index] = 10.0f * data1[index] + data2[index];
+}
+
