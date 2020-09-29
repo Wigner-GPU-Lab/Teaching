@@ -3,12 +3,12 @@ cmake_minimum_required(
     3.8 # CUDA language support
 )
 
-project(CUDA-Enum
+project(CUDA-MeasureStreamExecution
   LANGUAGES
     CXX
     CUDA
 )
 
 add_executable(${PROJECT_NAME}
-  saxpy_timed_stream.cu
+  MeasureStreamExecution.cu
 )

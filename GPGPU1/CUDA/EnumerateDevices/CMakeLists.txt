@@ -3,7 +3,7 @@ cmake_minimum_required(
     3.8 # CUDA language support
 )
 
-project(CUDA-Enum
+project(CUDA-EnumerateDevices
   LANGUAGES
     CXX
     CUDA
