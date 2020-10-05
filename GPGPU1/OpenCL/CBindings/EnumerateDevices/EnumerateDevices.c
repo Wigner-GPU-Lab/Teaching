@@ -1,4 +1,8 @@
-#include <CL/cl.h>
+#ifdef __APPLE__ //Mac OSX has a different name for the header file
+#include <OpenCL/opencl.h>
+#else
+#include <CL/opencl.h>
+#endif
 
 #include <stdio.h>  // printf
 #include <stdlib.h> // malloc
@@ -59,7 +63,7 @@ int main()
         for (cl_uint j = 0; j < numDevices; ++j)
         {
             size_t device_length;
-            CL_err = clGetDeviceInfo(devices[j], CL_DEVICE_NAME, UINTMAX_MAX, NULL, &device_length);
+            CL_err = clGetDeviceInfo(devices[j], CL_DEVICE_NAME, 0, NULL, &device_length);
             checkErr(CL_err, "clGetDeviceInfo(CL_DEVICE_NAME, NULL, &device_length)");
 
             char* device_name = (char*)malloc(device_length * sizeof(char));
