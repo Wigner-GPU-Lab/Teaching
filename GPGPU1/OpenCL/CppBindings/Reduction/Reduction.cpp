@@ -22,57 +22,75 @@ int main()
         std::cout << "Default queue on device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
 
         // Load program source
-        std::ifstream source_file{ "./SAXPY.cl" };
+        std::ifstream source_file{ "./Reduction.cl" };
         if (!source_file.is_open())
-            throw std::runtime_error{ std::string{ "Cannot open kernel source: " } + "./SAXPY.cl" };
+            throw std::runtime_error{ std::string{ "Cannot open kernel source: " } + "./Reduction.cl" };
 
         // Create program and kernel
         cl::Program program{ std::string{ std::istreambuf_iterator<char>{ source_file },
                                           std::istreambuf_iterator<char>{} } };
         program.build({ device });
 
-        auto saxpy = cl::KernelFunctor<cl_float, cl::Buffer, cl::Buffer>(program, "saxpy");
+        auto reduce = cl::KernelFunctor<cl_uint, cl::LocalSpaceArg, cl::Buffer, cl::Buffer>(program, "reduce");
+        auto wgs = reduce.getKernel().getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device);
+        while (device.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() < wgs * 2 * sizeof(cl_float))
+            wgs -= reduce.getKernel().getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(device);
+
+        if (wgs == 0) throw std::runtime_error{"Not enough local memory to serve a single sub-group."};
 
         // Init computation
         const std::size_t chainlength = std::size_t(std::pow(2u, 20u)); // 1M, cast denotes floating-to-integral conversion,
                                                                         //     promises no data is lost, silences compiler warning
-        std::vector<cl_float> vec_x(chainlength),
-                              vec_y(chainlength);
-        cl_float a = 2.0;
+        std::vector<cl_float> vec(chainlength);
 
         // Fill arrays with random values between 0 and 100
         auto prng = [engine = std::default_random_engine{},
                      distribution = std::uniform_real_distribution<cl_float>{ -100.0, 100.0 }]() mutable { return distribution(engine); };
 
-        std::generate_n(std::begin(vec_x), chainlength, prng);
-        std::generate_n(std::begin(vec_y), chainlength, prng);
+        std::generate_n(std::begin(vec), chainlength, prng);
 
-        cl::Buffer buf_x{ std::begin(vec_x), std::end(vec_x), true },
-                   buf_y{ std::begin(vec_y), std::end(vec_y), false };
+        cl::Buffer front{ context, std::begin(vec), std::end(vec), false };
+        cl::Buffer back{ context, CL_MEM_READ_WRITE, (vec.size() / (wgs * 2) + 1) * sizeof(cl_float) };
 
         // Explicit (blocking) dispatch of data before launch
-        cl::copy(queue, std::begin(vec_x), std::end(vec_x), buf_x);
-        cl::copy(queue, std::begin(vec_y), std::end(vec_y), buf_y);
+        cl::copy(queue, std::begin(vec), std::end(vec), front);
 
         // Launch kernels
-        saxpy(cl::EnqueueArgs{ queue, cl::NDRange{ chainlength } }, a, buf_x, buf_y);
+        std::vector<cl::Event> passes;
+        cl_uint curr = static_cast<cl_uint>(vec.size());
+        do
+        {
+            std::cout << (curr % wgs != 0 ? ((curr / wgs) + 1) * wgs : curr) / 2 << std::endl;
+            std::cout << (curr % (wgs * 2)) << std::endl;
+            passes.push_back(
+                reduce(
+                    cl::EnqueueArgs{
+                        queue,
+                        passes,
+                        (curr % wgs != 0 ? ((curr / wgs) + 1) * wgs : curr) / 2,
+                        wgs
+                    },
+                    curr,
+                    cl::Local(wgs * 2 * sizeof(cl_float)),
+                    front,
+                    back
+                )
+            );
 
-        cl::finish();
+            curr /= static_cast<cl_uint>(wgs * 2);
+            std::swap(front, back);
+        }
+        while ( curr > 0 );
+        for (auto& pass : passes) pass.wait();
 
-        std::transform(
-            vec_x.cbegin(),
-            vec_x.cbegin(),
-            vec_y.cbegin(),
-            vec_x.begin(),
-            [=](const cl_float& x, const cl_float& y){ return a * x + y; }
-        );
+        auto ref = *std::min_element(vec.cbegin(), vec.cend());
 
         // (Blocking) fetch of results
-        cl::copy(queue, buf_y, std::begin(vec_y), std::end(vec_y));
+        std::vector<cl_float> res(1);
+        cl::copy(queue, front, std::begin(res), std::end(res));
 
         // Validate (compute saxpy on host and match results)
-        if (std::equal(vec_x.cbegin(), vec_x.cend(), vec_y.cbegin()))
-            throw std::runtime_error{ "Validation failed." };
+        if (ref != res[0]) throw std::runtime_error{ "Validation failed!" };
 
     }
     catch (cl::BuildError& error) // If kernel failed to build
