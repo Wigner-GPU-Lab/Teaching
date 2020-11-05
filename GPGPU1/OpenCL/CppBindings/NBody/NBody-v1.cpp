@@ -1,219 +1,157 @@
+// OpenCL includes
+#include <CL/cl2.hpp>
+
 // STL includes
+#include <iostream>
+#include <array>
+#include <vector>
+#include <fstream>
+#include <algorithm>
+#include <cmath>
+#include <iterator>
+#include <utility>
 #include <chrono>
 #include <numeric>
 #include <iostream>
 #include <sstream>
+#include <random>
 
-// TCLAP includes
-#include <tclap/CmdLine.h>
+// GCC/MSVC packing macro
+#ifdef __GNUC__
+#define PACKED( class_to_pack ) class_to_pack __attribute__((__packed__))
+#else
+#define PACKED( class_to_pack ) __pragma( pack(push, 1) ) class_to_pack __pragma( pack(pop) )
+#endif
 
-// Manybody includes
-#include <particle.hpp>
+#define G 6.67384e-11
 
-int main(int argc, char** argv)
+struct input_particle
 {
-	std::string banner = "Manybody OpenCL v1: N^2, cache unaware, aliased, recalculating";
-	TCLAP::CmdLine cli( banner );
+    cl_float3 pos;
+    cl_float3 v;
+    cl_float mass;
+};
 
-    TCLAP::ValueArg<std::string> input_arg("i", "input", "Path to input file", true, "./", "path");
-    TCLAP::ValueArg<std::string> output_arg("o", "output", "Path to output file", false, "", "path");
-    TCLAP::ValueArg<std::string> validate_arg("v", "validate", "Path to validation file", false, "", "path");
-	TCLAP::ValueArg<std::string> type_arg( "t", "type", "Device type to use", false, "cpu", "cpu|gpu|acc" );
-	TCLAP::ValueArg<std::size_t> device_arg( "d", "device", "Device id to use", false, 0, "non-negative integral" );
-	TCLAP::ValueArg<std::size_t> platform_arg( "p", "platform", "Platform id to use", false, 0, "non-negative integral" );
-    TCLAP::ValueArg<std::size_t> iterate_arg("n", "", "Number of iterations to take", false, 1, "positive integral");
-    TCLAP::SwitchArg quiet_arg("q", "quiet", "Suppress standard output", false);
+//#pragma pack(1)
+struct alignas(16) particle
+{
+    particle() = default;
+    particle(const particle&) = default;
+    particle(particle&&) = default;
+    ~particle() = default;
 
-	cli.add( input_arg );
-	cli.add( output_arg );
-	cli.add( validate_arg );
-	cli.add( type_arg );
-	cli.add( device_arg );
-	cli.add( platform_arg );
-	cli.add( iterate_arg );
-	cli.add( quiet_arg );
+    particle& operator=(const particle&) = default;
+    particle& operator=(particle&&) = default;
 
+    particle(const input_particle& in) : mass(in.mass), pos(in.pos), v(in.v), f{ 0, 0, 0 } {}
+
+    cl_float3 pos;
+    cl_float3 v;
+    cl_float3 f;
+    cl_float mass;
+};
+
+int main()
+{
     try
     {
-        cli.parse(argc, argv);
-    }
-    catch (TCLAP::ArgException &e)
-    {
-        std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
-    }
+        cl::CommandQueue queue = cl::CommandQueue::getDefault();
 
-	cl::Platform platform;
-	cl::Device device;
-	cl::Context context;
-	cl::CommandQueue command_queue;
-	cl::Program program;
-	cl::Buffer buffer;
-    cl::Kernel interaction, forward_euler;
-    cl::NDRange interaction_gws, interaction_lws, euler_gws, euler_lws;
-    cl::Event interaction_event, euler_event;
+        cl::Device device = queue.getInfo<CL_QUEUE_DEVICE>();
+        cl::Context context = queue.getInfo<CL_QUEUE_CONTEXT>();
+        cl::Platform platform{device.getInfo<CL_DEVICE_PLATFORM>()};
 
-	std::vector<particle> particles;
+        std::cout << "Default queue on platform: " << platform.getInfo<CL_PLATFORM_VENDOR>() << std::endl;
+        std::cout << "Default queue on device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
 
-	if ( !quiet_arg.getValue() ) std::cout << banner << std::endl;
+        // Load program source
+        std::ifstream source_file{ "./NBody-v1.cl" };
+        if ( !source_file.is_open() )
+            throw std::runtime_error{ std::string{ "Cannot open kernel source: " } + "./NBody-v1.cl" };
 
-	try
-	{
-		std::vector<cl::Platform> platforms;
-		cl::Platform::get( &platforms );
+        // Create program and kernel
+        cl::Program program{ std::string{ std::istreambuf_iterator<char>{ source_file },
+                                          std::istreambuf_iterator<char>{} } };
+        program.build({ device });
 
-		if ( platforms.empty() )
-		{
-			std::cerr << "No OpenCL platform detected." << std::endl;
-			exit( EXIT_FAILURE );
-		}
+        auto interaction = cl::KernelFunctor<cl::Buffer>(program, "interaction");
+        auto forward_euler = cl::KernelFunctor<cl::Buffer, float>(program, "forward_euler");
 
-		platform = platforms.at( platform_arg.getValue() );
+        std::vector<particle> particles;
+        std::size_t particle_count = 4096;
+        cl_float x_abs_range = 192.f,
+                 y_abs_range = 128.f,
+                 z_abs_range = 32.f,
+                 mass_min = 100.f,
+                 mass_max = 500.f;
 
-		if ( !quiet_arg.getValue() ) std::cout << "Selected platform: " << platform.getInfo<CL_PLATFORM_NAME>() << std::endl;
+        // Create block of particles
+        using uni = std::uniform_real_distribution<cl_float>;
+        std::generate_n(
+            std::back_inserter(particles),
+            particle_count,
+            [prng = std::default_random_engine(),
+             x_dist = uni(-x_abs_range, x_abs_range),
+             y_dist = uni(-y_abs_range, y_abs_range),
+             z_dist = uni(-z_abs_range, z_abs_range),
+             m_dist = uni(mass_min, mass_max)]() mutable
+        {
+            return input_particle{
+                cl_float3{
+                    x_dist(prng),
+                    y_dist(prng),
+                    z_dist(prng),
+                    0.f },
+                0,
+                m_dist(prng)
+            };
+        });
 
-		cl_device_type device_type = CL_DEVICE_TYPE_DEFAULT;
-		if ( type_arg.getValue() == "cpu" ) device_type = CL_DEVICE_TYPE_CPU;
-		if ( type_arg.getValue() == "gpu" ) device_type = CL_DEVICE_TYPE_GPU;
-		if ( type_arg.getValue() == "acc" ) device_type = CL_DEVICE_TYPE_ACCELERATOR;
-
-		std::vector<cl::Device> devices;
-		platform.getDevices( device_type, &devices );
-
-		device = devices.at( device_arg.getValue() );
-
-		if ( !quiet_arg.getValue() ) std::cout << "Selected device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
-
-		if ( (device.getInfo<CL_DEVICE_EXTENSIONS>().find( "cl_khr_fp64" ) == std::string::npos) &&
-			(device.getInfo<CL_DEVICE_EXTENSIONS>().find( "cl_amd_fp64" ) == std::string::npos) )
-		{
-			std::cerr << "Selected device does not support double precision" << std::endl;
-			exit( EXIT_FAILURE );
-		}
-
-		std::vector<cl_context_properties> props{ CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>(platform()), 0 };
-		context = cl::Context( device, props.data(), nullptr, nullptr);
-
-		command_queue = cl::CommandQueue( context, device, CL_QUEUE_PROFILING_ENABLE);
-
-        std::ifstream source_file(std::string(MANYBODY_OPENCL_KERNEL_PATH) + "manybody-cl-v1-single-device.cl");
-		if ( !source_file.is_open() )
-			throw cl::Error(-9999, "std::ifstream::is_open");
-
-		std::string source_string( std::istreambuf_iterator<char>( source_file ), (std::istreambuf_iterator<char>()) );
-
-        // Workaround for buggy -I switch on Nvidia platform
-        std::string replace_what("<particle.cl>");
-        std::string replace_with(std::string("<") + std::string(MANYBODY_OPENCL_KERNEL_PATH) + "../inc/particle.cl>");
-        std::size_t replace_where = source_string.find(replace_what);
-
-        source_string.replace(replace_where,
-                              replace_what.size(),
-                              replace_with);
-
-		program = cl::Program( context, source_string );
-
-        std::stringstream build_opts;
-
-        build_opts <<
-            "-cl-mad-enable " <<
-            "-cl-no-signed-zeros " <<
-            "-cl-finite-math-only " <<
-            "-cl-single-precision-constant " <<
-            "-I " << std::string(MANYBODY_OPENCL_KERNEL_PATH) + "../inc";
-
-		if ( !quiet_arg.getValue() ){ std::cout << "Building program..."; std::cout.flush(); }
-		program.build( std::vector<cl::Device>( 1, device ), build_opts.str().c_str());
-		if ( !quiet_arg.getValue() ){ std::cout << " done." << std::endl; }
-
-        interaction = cl::Kernel(program, "interaction");
-        forward_euler = cl::Kernel(program, "forward_euler");
-
-        if (!quiet_arg.getValue())
-            std::cout << "Interaction kernel preferred WGS: " << interaction.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device) << std::endl;
-        if (!quiet_arg.getValue())
-            std::cout << "Forward Euler kernel preferred WGS: " << forward_euler.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device) << std::endl;
-
-        if (!quiet_arg.getValue()){ std::cout << "Reading input file..."; std::cout.flush(); }
-		particles = read_particle_file( input_arg.getValue() );
-        if (!quiet_arg.getValue()){ std::cout << " done." << std::endl; }
-
-        buffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, particles.size() * sizeof(particle), particles.data());
-
-        interaction.setArg(0, buffer);
-        forward_euler.setArg(0, buffer);
-        forward_euler.setArg(1, 0.001f);
-
-        interaction_gws = cl::NDRange(particles.size());
-        interaction_lws = cl::NullRange;
-        euler_gws = cl::NDRange(particles.size());
-        euler_lws = cl::NullRange;
+        cl::Buffer buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, particles.size() * sizeof(particle), particles.data());
 
         // Run warm-up kernels
-        command_queue.enqueueNDRangeKernel(interaction, cl::NullRange, interaction_gws, interaction_lws, nullptr, &interaction_event);
-        command_queue.enqueueNDRangeKernel(forward_euler, cl::NullRange, euler_gws, euler_lws);
+        interaction(cl::EnqueueArgs{ queue, cl::NDRange{ particle_count } }, buffer);
+        forward_euler(cl::EnqueueArgs{ queue, cl::NDRange{ particle_count } }, buffer, 0.001f);
 
-        command_queue.finish();
+        cl::finish();
 
-        // Reset data
-        command_queue.enqueueWriteBuffer(buffer, CL_TRUE, 0, particles.size() * sizeof(particle), particles.data());
-	}
-	catch ( cl::Error error )
-	{
-		std::cerr << error.what() << "(" << error.err() << ")" << std::endl;
-
-		if ( std::string(error.what()) == "clBuildProgram" )
-		{
-			if (program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device) == CL_BUILD_ERROR)
-				std::cerr << std::endl << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>( device ) << std::endl;
-		}
-
-		exit( error.err() );
-	}
-    
-    {
         auto start = std::chrono::high_resolution_clock::now();
 
-        for (std::size_t n = 0; n < iterate_arg.getValue(); ++n)
+        for (std::size_t n = 0; n < 1000; ++n)
         {
-            try
-            {
-                command_queue.enqueueNDRangeKernel(interaction, cl::NullRange, interaction_gws, interaction_lws, nullptr, &interaction_event);
-                command_queue.enqueueNDRangeKernel(forward_euler, cl::NullRange, euler_gws, euler_lws);
-            }
-            catch (cl::Error error)
-            {
-                std::cerr << error.what() << "(" << error.err() << ")" << std::endl;
-                exit(error.err());
-            }
+            interaction(cl::EnqueueArgs{ queue, cl::NDRange{ particle_count } }, buffer);
+            forward_euler(cl::EnqueueArgs{ queue, cl::NDRange{ particle_count } }, buffer, 0.001f);
         }
 
-        command_queue.finish();
+        cl::finish();
 
         auto end = std::chrono::high_resolution_clock::now();
-        if (!quiet_arg.getValue()) std::cout << "Computation took " << std::chrono::duration_cast<std::chrono::milliseconds>(end.time_since_epoch() - start.time_since_epoch()).count() << " milliseconds." << std::endl;
+        std::cout << "Computation took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " milliseconds." << std::endl;
     }
-
+    catch (cl::BuildError& error) // If kernel failed to build
     {
-        if (output_arg.getValue() != "")
+        std::cerr << error.what() << "(" << error.err() << ")" << std::endl;
+
+        for (const auto& log : error.getBuildLog())
         {
-            if (!quiet_arg.getValue()) std::cout << "Exporting results into " << output_arg.getValue() << std::endl;
-
-            command_queue.enqueueReadBuffer(buffer, true, 0, particles.size() * sizeof(particle), particles.data());
-
-            write_validation_file(particles.cbegin(), particles.cend(), output_arg.getValue());
+            std::cerr <<
+                "\tBuild log for device: " <<
+                log.first.getInfo<CL_DEVICE_NAME>() <<
+                std::endl << std::endl <<
+                log.second <<
+                std::endl << std::endl;
         }
-    }
 
+        std::exit(error.err());
+    }
+    catch (cl::Error& error) // If any OpenCL error occurs
     {
-        if (validate_arg.getValue() != "")
-        {
-            if (!quiet_arg.getValue()) std::cout << "Validating results against " << validate_arg.getValue() << std::endl;
-
-            command_queue.enqueueReadBuffer(buffer, true, 0, particles.size() * sizeof(particle), particles.data());
-
-            if (!validate(particles.cbegin(), particles.cend(), validate_arg.getValue())) exit(EXIT_FAILURE);
-        }
+        std::cerr << error.what() << "(" << error.err() << ")" << std::endl;
+        std::exit(error.err());
     }
-
-	return 0;
+    catch (std::exception& error) // If STL/CRT error occurs
+    {
+        std::cerr << error.what() << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
 }
