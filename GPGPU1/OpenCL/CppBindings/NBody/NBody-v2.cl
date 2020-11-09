@@ -16,20 +16,9 @@ __kernel void interaction( __global particle* particles )
 
 		if (gid != i)
 		{
-			force += calculate_force(&my_particle, &temp);
+			force += calculate_force2(&my_particle, &temp);
 		}
 	}
 
 	particles[gid].f = force;
-}
-
-__kernel void forward_euler( __global particle* particles, float dt )
-{
-	int gid = get_global_id(0);
-
-	particle my_particle = particles[gid];
-
-	euler_helper(&my_particle, dt);
-
-	particles[gid] = my_particle;
 }

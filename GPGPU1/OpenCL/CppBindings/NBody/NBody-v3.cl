@@ -14,26 +14,15 @@ __kernel void interaction( __global particle* particles )
 	{
 		particle temp = particles[i];
 
-		force += calculate_force(&my_particle, &temp);
+		force += calculate_force0(&my_particle, &temp);
 	}
 	
 	for (int i = gid + 1 ; i < gsi ; ++i)
 	{
 		particle temp = particles[i];
 
-		force += calculate_force(&my_particle, &temp);
+		force += calculate_force0(&my_particle, &temp);
 	}
 
 	particles[gid].f = force;
-}
-
-__kernel void forward_euler( __global particle* particles, float dt )
-{
-	int gid = get_global_id(0);
-
-	particle my_particle = particles[gid];
-
-	euler_helper(&my_particle, dt);
-
-	particles[gid] = my_particle;
 }
