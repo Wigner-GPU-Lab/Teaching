@@ -1,4 +1,3 @@
-// Manybody includes
 #include <particle.cl>
 
 __kernel void interaction( __global particle* particles, __local particle* share )
@@ -27,7 +26,7 @@ __kernel void interaction( __global particle* particles, __local particle* share
 
 			if (gid != (I * lsi + i))
 			{
-				force += calculate_force0(&my_particle, &temp);
+				force += calculate_force2(&my_particle, &temp);
 			}
 		}
 

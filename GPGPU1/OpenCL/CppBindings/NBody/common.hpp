@@ -28,10 +28,15 @@
 #define PACKED( class_to_pack ) __pragma( pack(push, 1) ) class_to_pack __pragma( pack(pop) )
 #endif
 
-static const std::size_t particle_count = 4096/4;
-static const float deltat       = 0.000001f;
+static const std::size_t platformIdx = 0;
+static const std::size_t deviceIdx   = 0;
+
+static const std::size_t particle_count = 4096*2;
+static const std::size_t nsteps = 1000;
+static const bool runCPUReference = false;
+
+static const float deltat       = 0.0000005f;
 static const float G            = 1.0f;//6.67384e-11f;
-static const std::size_t nsteps = 1;
 
 struct input_particle
 {
@@ -59,16 +64,51 @@ struct alignas(16) particle
     cl_float mass;
 };
 
-cl::Program loadProgram(std::string const& filename)
+void initializeOpenCL(cl::Device& device)
 {
-    // Load program source
+    std::vector<cl::Platform> platforms;
+    std::vector<std::vector<cl::Device>> devices;
+    cl::Platform::get(&platforms);
+    
+    devices.resize(platforms.size());
+    std::size_t p = 0;
+    for (const auto& platform : platforms)
+    {
+        platform.getDevices(CL_DEVICE_TYPE_ALL, &(devices[p]));
+        p += 1;
+    }
+
+    if(platformIdx >= platforms.size()           ){ std::cout << "Invalid platform index: " << platformIdx << " of " << platforms.size() << "\n"; }
+    if(deviceIdx   >= devices[platformIdx].size()){ std::cout << "Invalid device index: "   << deviceIdx   << " of " << devices[platformIdx].size() << "\n"; }
+    
+    std::cout << "Platform: " << platforms[platformIdx].getInfo<CL_PLATFORM_VENDOR>() << std::endl;
+    
+    device = devices[platformIdx][deviceIdx];
+    std::cout << "Device: "   << device  .getInfo<CL_DEVICE_NAME>    () << std::endl;
+}
+
+cl::Program loadProgram(cl::Context ctx, std::string const& filename)
+{
+    // Load program source with manual preprocessing of #include due to nvidia bug...
+
     std::ifstream source_file{ filename };
     if ( !source_file.is_open() )
         throw std::runtime_error{ std::string{ "Cannot open kernel source: " } + filename };
 
+    std::ifstream include_file{ "particle.cl" };
+    if ( !include_file.is_open() )
+        throw std::runtime_error{ std::string{ "Cannot open kernel include: particle.cl" } };
+
+    std::string src{ std::istreambuf_iterator<char>{ source_file },  std::istreambuf_iterator<char>{} };
+    std::string inc{ std::istreambuf_iterator<char>{ include_file }, std::istreambuf_iterator<char>{} };
+
+    std::string replace_what("#include <particle.cl>\n");
+    std::size_t replace_where = src.find(replace_what);
+
+    src.replace(replace_where, replace_what.size(), inc);
+
     // Create program and kernel
-    return cl::Program{ std::string{ std::istreambuf_iterator<char>{ source_file },
-                                     std::istreambuf_iterator<char>{} } };
+    return cl::Program{ ctx, src };
 }
 
 void generateParticles(std::vector<particle>& particles, size_t N)
@@ -110,6 +150,7 @@ T cube(T x){ return x*x*x; }
 
 void cpuReference(std::vector<particle>const& particlesIn, std::vector<particle>& particlesOut)
 {
+    if(!runCPUReference){ return; }
     const auto N = particlesIn.size();
     particlesOut = particlesIn;
 
@@ -153,7 +194,8 @@ void cpuReference(std::vector<particle>const& particlesIn, std::vector<particle>
 
 void compareResults(std::vector<particle>const& p1, std::vector<particle>const& p2)
 {
-    const float max_err = 5e-3f;
+    if(!runCPUReference){ return; }
+    const float max_err = 5e-5f;
     auto floatComparator = [max_err](float l, float r){ return std::abs(l-r) < max_err; };
     auto particleComparator = [c=floatComparator](particle p1, particle p2)
     {

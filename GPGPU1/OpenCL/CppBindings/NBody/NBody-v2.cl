@@ -1,4 +1,3 @@
-// Manybody includes
 #include <particle.cl>
 
 __kernel void interaction( __global particle* particles )

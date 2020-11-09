@@ -2,31 +2,16 @@
 
 int main()
 {
-    std::vector<cl::Platform> platforms;
-    std::vector<std::vector<cl::Device>> devices;
     cl::Device device;
     cl::Program program;
     try
     {
-        cl::Platform::get(&platforms);
-        
-        devices.resize(platforms.size());
-        std::size_t p = 0;
-        for (const auto& platform : platforms)
-        {
-            platform.getDevices(CL_DEVICE_TYPE_ALL, &(devices[p]));
-            p += 1;
-        }
+        initializeOpenCL(device);
 
-        device = devices[1][0];
-        cl::Platform platform = platforms[1];
         cl::Context context = cl::Context(device);
-        cl::CommandQueue queue = cl::CommandQueue(context);
+        cl::CommandQueue queue = cl::CommandQueue(context, device);
 
-        std::cout << "Platform: " << platform.getInfo<CL_PLATFORM_VENDOR>() << std::endl;
-        std::cout << "Device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
-
-        program = loadProgram("./NBody-v1.cl");
+        program = loadProgram(context, "./NBody-v1.cl");
         program.build({ device });
 
         auto interaction   = cl::Kernel(program, "interaction");
@@ -78,8 +63,14 @@ int main()
 
 		if ( std::string(error.what()) == "clBuildProgram" )
 		{
+            printf("build error\n");
 			if (program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device) == CL_BUILD_ERROR)
 				std::cerr << std::endl << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>( device ) << std::endl;
+            else
+            {
+                printf("not build error\n");
+            }
+            
 		}
 
         std::exit(error.err());

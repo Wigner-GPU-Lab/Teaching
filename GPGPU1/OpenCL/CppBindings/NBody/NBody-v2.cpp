@@ -2,33 +2,30 @@
 
 int main()
 {
-    cl::Program program;
     cl::Device device;
+    cl::Program program;
     try
     {
-        cl::CommandQueue queue = cl::CommandQueue::getDefault();
+        initializeOpenCL(device);
 
-        device = queue.getInfo<CL_QUEUE_DEVICE>();
-        cl::Context context = queue.getInfo<CL_QUEUE_CONTEXT>();
-        cl::Platform platform{device.getInfo<CL_DEVICE_PLATFORM>()};
+        cl::Context context = cl::Context(device);
+        cl::CommandQueue queue = cl::CommandQueue(context, device);
 
-        std::cout << "Default queue on platform: " << platform.getInfo<CL_PLATFORM_VENDOR>() << std::endl;
-        std::cout << "Default queue on device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
-
-        program = loadProgram("./NBody-v2.cl");
+        program = loadProgram(context, "./NBody-v2.cl");
         program.build({ device });
 
         auto interaction   = cl::Kernel(program, "interaction");
         auto forward_euler = cl::Kernel(program, "forward_euler");
 
-        std::vector<particle> particles;
+        std::vector<particle> particles, particlesInit;
         generateParticles(particles, particle_count);
+        particlesInit = particles;
 
         cl::Buffer buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, particles.size() * sizeof(particle), particles.data());
 
         interaction.setArg(0, buffer);
         forward_euler.setArg(0, buffer);
-        forward_euler.setArg(1, 0.001f);
+        forward_euler.setArg(1, deltat);
 
         // grid configuration:
         cl::NDRange interaction_gws = cl::NDRange(particles.size());
@@ -39,21 +36,26 @@ int main()
         // Run warm-up kernels
         queue.enqueueNDRangeKernel(interaction,   cl::NullRange, interaction_gws, interaction_lws);
         queue.enqueueNDRangeKernel(forward_euler, cl::NullRange, euler_gws,       euler_lws);
-
+        cl::copy(queue, std::begin(particles), std::end(particles), buffer);
         cl::finish();
 
         auto start = std::chrono::high_resolution_clock::now();
 
-        for (std::size_t n = 0; n < 1000; ++n)
+        for (std::size_t n = 0; n < nsteps; ++n)
         {
             queue.enqueueNDRangeKernel(interaction,   cl::NullRange, interaction_gws, interaction_lws);
             queue.enqueueNDRangeKernel(forward_euler, cl::NullRange, euler_gws,       euler_lws);
         }
+        cl::copy(queue, buffer, std::begin(particles), std::end(particles));
 
         cl::finish();
 
         auto end = std::chrono::high_resolution_clock::now();
         std::cout << "Computation took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " milliseconds." << std::endl;
+
+        std::vector<particle> particlesRef;
+        cpuReference(particlesInit, particlesRef);
+        compareResults(particlesRef, particles);
     }
     catch (cl::Error& error) // If any OpenCL error occurs
     {

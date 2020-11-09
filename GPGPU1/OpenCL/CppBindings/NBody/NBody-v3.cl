@@ -1,4 +1,3 @@
-// Manybody includes
 #include <particle.cl>
 
 __kernel void interaction( __global particle* particles )
@@ -14,14 +13,14 @@ __kernel void interaction( __global particle* particles )
 	{
 		particle temp = particles[i];
 
-		force += calculate_force0(&my_particle, &temp);
+		force += calculate_force2(&my_particle, &temp);
 	}
 	
 	for (int i = gid + 1 ; i < gsi ; ++i)
 	{
 		particle temp = particles[i];
 
-		force += calculate_force0(&my_particle, &temp);
+		force += calculate_force2(&my_particle, &temp);
 	}
 
 	particles[gid].f = force;
