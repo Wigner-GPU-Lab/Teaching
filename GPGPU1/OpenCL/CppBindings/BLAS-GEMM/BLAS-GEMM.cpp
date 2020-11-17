@@ -92,6 +92,8 @@ int main()
         if (std::equal(vec_w.cbegin(), vec_w.cend(), vec_z.cbegin(), [](const cl_float& ref, const cl_float& res){ return (res - ref) < 1e-3f; }))
             throw std::runtime_error{ "Validation failed." };
 
+        clblasTeardown();
+
     }
     catch (cl::BuildError& error) // If kernel failed to build
     {
