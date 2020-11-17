@@ -1,4 +1,4 @@
-#include <CL/opencl.hpp>
+#include <CL/cl2.hpp>
 #include <clBLAS.h>
 
 #include <vector>       // std::vector
@@ -18,7 +18,7 @@ void cpu_matmul_naive(std::vector<float>& C, std::vector<float> const& A, std::v
             float sum = 0;
             for(int k=0; k<K; ++k)
             {
-                sum += A[n*N+k] * B[k*N+m];
+                sum += A[n*N+k] * B[k*K+m];
             }
             C[n*N+m] = sum;
         }
