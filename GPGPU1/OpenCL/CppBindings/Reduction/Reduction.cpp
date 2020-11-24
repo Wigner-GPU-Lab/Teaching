@@ -54,9 +54,10 @@ int main()
         auto global = [=](const std::size_t actual){ return new_size(actual) * wgs; };
 
         // Init computation
-        const std::size_t chainlength = std::size_t(std::pow(2u, 20u)); // 1M, cast denotes floating-to-integral conversion,
+        const std::size_t chainlength = std::size_t(std::pow(2u, 28u)); // 1M, cast denotes floating-to-integral conversion,
                                                                         //     promises no data is lost, silences compiler warning
         std::vector<cl_float> vec(chainlength);
+        std::cout << "Generating " << chainlength << " random numbers for reduction." << std::endl;
 
         // Fill arrays with random values between 0 and FLOAT_MAX
         auto prng = [engine = std::default_random_engine{},
@@ -71,6 +72,7 @@ int main()
         cl::copy(queue, std::begin(vec), std::end(vec), front);
 
         // Launch kernels
+        std::cout << "Executing..." << std::endl;
         auto dev_start = std::chrono::high_resolution_clock::now();
         std::vector<cl::Event> passes;
         cl_uint curr = static_cast<cl_uint>(vec.size());
