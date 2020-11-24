@@ -1,5 +1,3 @@
-#pragma OPENCL EXTENSION cl_khr_printf: enable
-
 float read_local(local float* shared, size_t count, float zero, size_t i)
 {
     return i < count ? shared[i] : zero;
@@ -33,11 +31,6 @@ kernel void reduce(
     wait_group_events(1, &read);
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    //if (lid == 0) printf("%d", valid_count);
-    //printf("shared[%d] = %f", lid, read_local(shared, valid_count, zero_elem, lid));
-    //barrier(CLK_LOCAL_MEM_FENCE);
-    //printf("shared[%d] = %f", lid + lsi, read_local(shared, valid_count, zero_elem, lid + lsi));
-
     for (int i = lsi; i != 0; i /= 2)
     {
         if (lid < i)
@@ -48,5 +41,4 @@ kernel void reduce(
         barrier(CLK_LOCAL_MEM_FENCE);
     }
     if (lid == 0) back[wid] = shared[0];
-    //if (lid == 0) printf("wid = %d has shared[0] = %f", wid, shared[0]);
 }

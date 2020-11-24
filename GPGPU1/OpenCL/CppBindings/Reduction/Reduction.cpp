@@ -35,13 +35,10 @@ int main(int, char* argv[])
         auto reduce = cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_uint, cl_float>(program, "reduce");
         auto wgs = reduce.getKernel().getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device);
 
-        //std::cout << "Preferred WGS for kernel \"reduce\": " << wgs << std::endl;
-
         while (device.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() < wgs * 2 * sizeof(cl_float))
             wgs -= reduce.getKernel().getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(device);
 
         if (wgs == 0) throw std::runtime_error{"Not enough local memory to serve a single sub-group."};
-        //std::cout << "WGS after local memory constraint of " << device.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << " bytes: " << wgs << std::endl;
 
         auto factor = wgs * 2;
         // Every pass reduces input length by 'factor'.
@@ -79,11 +76,6 @@ int main(int, char* argv[])
         cl_uint curr = static_cast<cl_uint>(vec.size());
         while ( curr > 1 )
         {
-            //std::cout << "Current: " << curr << std::endl;
-            //std::cout << "Global work-group size: " << global(curr) << std::endl;
-            //std::cout << "Number of work-groups: " << new_size(curr) << std::endl;
-            //std::cout << "Last group copy: " << curr - (new_size(curr) - 1) * factor << std::endl;
-
             passes.push_back(
                 reduce(
                     cl::EnqueueArgs{
