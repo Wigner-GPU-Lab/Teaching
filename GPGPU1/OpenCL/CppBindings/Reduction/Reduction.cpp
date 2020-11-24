@@ -29,7 +29,7 @@ int main(int, char* argv[])
 
         // Create program and kernel
         cl::Program program{ std::string{ std::istreambuf_iterator<char>{ source_file },
-                                          std::istreambuf_iterator<char>{} } };
+                                          std::istreambuf_iterator<char>{} }.append("float op(float lhs, float rhs) { return min(lhs, rhs); }") };
         program.build({ device });
 
         auto reduce = cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_uint, cl_float>(program, "reduce");

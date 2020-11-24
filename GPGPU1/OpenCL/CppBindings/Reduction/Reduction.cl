@@ -1,3 +1,5 @@
+float op(float lhs, float rhs);
+
 float read_local(local float* shared, size_t count, float zero, size_t i)
 {
     return i < count ? shared[i] : zero;
@@ -35,7 +37,8 @@ kernel void reduce(
     {
         if (lid < i)
             shared[lid] =
-                min(read_local(shared, valid_count, zero_elem, lid),
+                op(
+                    read_local(shared, valid_count, zero_elem, lid),
                     read_local(shared, valid_count, zero_elem, lid + i)
                 );
         barrier(CLK_LOCAL_MEM_FENCE);
