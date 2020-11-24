@@ -26,7 +26,7 @@ int main()
         auto kernel_op = "float op(float lhs, float rhs) { return min(lhs, rhs); }";
         auto host_op = [](float lhs, float rhs){ return std::min(lhs, rhs); };
         auto zero_elem = std::numeric_limits<cl_float>().max();
-        const std::size_t chainlength = std::size_t(std::pow(2u, 28u)); // 1M, cast denotes floating-to-integral conversion,
+        const std::size_t chainlength = std::size_t(std::pow(2u, 28u)); // 256M, cast denotes floating-to-integral conversion,
                                                                         //     promises no data is lost, silences compiler warning
 
         // Load program source
