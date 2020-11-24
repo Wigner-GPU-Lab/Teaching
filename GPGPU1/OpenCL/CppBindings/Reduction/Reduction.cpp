@@ -9,7 +9,7 @@
 #include <cstdlib>      // EXIT_FAILURE
 #include <execution>
 
-int main(int, char* argv[])
+int main()
 {
     try
     {
@@ -54,7 +54,7 @@ int main(int, char* argv[])
         auto global = [=](const std::size_t actual){ return new_size(actual) * wgs; };
 
         // Init computation
-        const std::size_t chainlength = std::atoi(argv[1]);//std::size_t(std::pow(2u, 20u)); // 1M, cast denotes floating-to-integral conversion,
+        const std::size_t chainlength = std::size_t(std::pow(2u, 20u)); // 1M, cast denotes floating-to-integral conversion,
                                                                         //     promises no data is lost, silences compiler warning
         std::vector<cl_float> vec(chainlength);
 
