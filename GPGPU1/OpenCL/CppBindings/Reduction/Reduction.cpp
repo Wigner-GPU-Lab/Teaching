@@ -28,7 +28,6 @@ int main()
         auto zero_elem = std::numeric_limits<cl_float>().max();
         const std::size_t chainlength = std::size_t(std::pow(2u, 28u)); // 256M, cast denotes floating-to-integral conversion,
                                                                         //     promises no data is lost, silences compiler warning
-
         // Load program source
         std::ifstream source_file{ "./Reduction.cl" };
         if (!source_file.is_open())
@@ -131,7 +130,6 @@ int main()
             std::cout << "Serial host execution took: " << std::chrono::duration_cast<std::chrono::milliseconds>(seq_end - seq_start).count() << "ms." << std::endl;
             std::cout << "Parallel host execution took: " << std::chrono::duration_cast<std::chrono::milliseconds>(par_end - par_start).count() << "ms." << std::endl;
         }
-        
     }
     catch (cl::BuildError& error) // If kernel failed to build
     {
