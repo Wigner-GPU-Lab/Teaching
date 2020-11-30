@@ -31,7 +31,7 @@ int main()
         auto kernel_op = "unsigned int op(unsigned int lhs, unsigned int rhs) { return lhs + rhs; }";
         auto host_op = [](cl_uint lhs, cl_uint rhs){ return lhs + rhs; };
         auto zero_elem = cl_uint{0};
-        const std::size_t N = std::size_t(std::pow(2u, 20u)), // 256M, cast denotes floating-to-integral conversion,
+        const std::size_t N = std::size_t(std::pow(2u, 28u)), // 256M, cast denotes floating-to-integral conversion,
                                                               //     promises no data is lost, silences compiler warning
                           gens_per_item = 128,
                           count_length = N / gens_per_item;
@@ -94,15 +94,15 @@ int main()
                    back{ context, CL_MEM_READ_WRITE, new_size(count_length) * sizeof(cl_uint) };;
 
         // Explicit (blocking) dispatch of data before launch
+        std::cout << "Executing..." << std::endl;
+        auto dev_start = std::chrono::high_resolution_clock::now();
         cl::copy(queue, streams.begin(), streams.end(), streams_buf);
 
         // Launch kernels
-        std::cout << "Executing..." << std::endl;
-        auto dev_start = std::chrono::high_resolution_clock::now();
         cl::Event count_event = count(
             cl::EnqueueArgs{
                 queue,
-                global(count_length)
+                count_length
             },
             gens_per_item,
             streams_buf,
@@ -132,6 +132,11 @@ int main()
             if (curr > 1) std::swap(front, back);
         }
         for (auto& pass : passes) pass.wait();
+
+        // (Blocking) fetch of results
+        cl_uint dev_res;
+        cl::copy(queue, back, &dev_res, &dev_res + 1);
+
         auto dev_end = std::chrono::high_resolution_clock::now();
 
         std::vector<cl_uint> counts(count_length);
@@ -160,10 +165,6 @@ int main()
         std::transform(std::execution::seq, streams.cbegin(), streams.cend(), counts.begin(), stream_to_count);
         auto seq_ref = std::reduce(std::execution::seq, counts.cbegin(), counts.cend(), zero_elem, host_op);
         auto seq_end = std::chrono::high_resolution_clock::now();
-
-        // (Blocking) fetch of results
-        cl_uint dev_res;
-        cl::copy(queue, back, &dev_res, &dev_res + 1);
 
         auto count_to_pi = [N](cl_uint inside){ return 4. * inside / N; };
 
