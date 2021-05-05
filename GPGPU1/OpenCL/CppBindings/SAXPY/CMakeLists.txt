@@ -38,4 +38,4 @@ target_compile_definitions(${PROJECT_NAME}
     CL_HPP_ENABLE_EXCEPTIONS
 )
 
-source_group("Sources" FILES ${Files_SRCS})
+source_group("Sources" FILES ${Sources})
