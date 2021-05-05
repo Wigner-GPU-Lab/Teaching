@@ -12,9 +12,11 @@ find_package(Threads REQUIRED)
 foreach(Ver RANGE 1 5)
 
   set(Sources NBody-v${Ver}.cpp)
+  set(Kernels NBody-v${Ver}.cl)
 
   add_executable(${PROJECT_NAME}-v${Ver}
     ${Sources}
+    ${Kernels}
   )
 
   target_compile_features(${PROJECT_NAME}-v${Ver}
@@ -41,5 +43,6 @@ foreach(Ver RANGE 1 5)
   )
 
   source_group("Sources" FILES ${Sources})
+  source_group("Kernels" FILES ${Kernels})
 
 endforeach()

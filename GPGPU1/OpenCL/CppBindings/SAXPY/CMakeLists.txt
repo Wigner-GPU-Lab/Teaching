@@ -10,9 +10,11 @@ find_package(OpenCL REQUIRED)
 find_package(Threads REQUIRED)
 
 set(Sources SAXPY.cpp)
+set(Kernels Reduction.cl)
 
 add_executable(${PROJECT_NAME}
   ${Sources}
+  ${Kernels}
 )
 
 target_compile_features(${PROJECT_NAME}
@@ -39,3 +41,4 @@ target_compile_definitions(${PROJECT_NAME}
 )
 
 source_group("Sources" FILES ${Sources})
+source_group("Kernels" FILES ${Kernels})
