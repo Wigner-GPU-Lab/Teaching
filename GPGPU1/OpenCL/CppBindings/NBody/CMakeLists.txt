@@ -6,10 +6,6 @@ project(OpenCL-Cpp-NBody
   LANGUAGES CXX
 )
 
-set(CMAKE_MODULE_PATH
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules
-)
-
 find_package(OpenCL REQUIRED)
 find_package(Threads REQUIRED)
 
