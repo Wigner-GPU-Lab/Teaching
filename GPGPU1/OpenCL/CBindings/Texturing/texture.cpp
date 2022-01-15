@@ -126,6 +126,7 @@ int main()
     if(status != CL_SUCCESS){ std::cout << "Cannot create command queue: " << status << "\n"; return -1; }
 
 	std::ifstream file("sobel.cl");
+	if(!file.is_open()){ std::cout << "Could not open kernel file: sobel.cl\n"; return -1; };
 	std::string source( std::istreambuf_iterator<char>(file), (std::istreambuf_iterator<char>()));
 	size_t      sourceSize = source.size();
 	const char* sourcePtr  = source.c_str();
